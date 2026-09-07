@@ -1,0 +1,19 @@
+{
+  "name": "Garaje — Control de vehículos",
+  "short_name": "Garaje",
+  "description": "Administra tus vehículos: mantenimientos, combustible, documentos, gastos y venta.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EFF3F8",
+  "theme_color": "#1B90F5",
+  "lang": "es",
+  "dir": "ltr",
+  "categories": ["utilities", "productivity", "lifestyle"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

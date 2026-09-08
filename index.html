@@ -644,6 +644,7 @@ let confirmCb=null;
 function defaultSettings(){
   return {theme:'light',currency:'COP',language:'es',units:{distance:'km',fuel:'Galón'},reminders:{days:true,km:true}};
 }
+function normalizePlate(value){ return String(value||'').replace(/\s+/g,'').toUpperCase(); }
 
 /* ---------- persistencia ---------- */
 function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){ toast('No se pudo guardar.','err'); } }
@@ -664,7 +665,7 @@ function load(){
   state.settings=Object.assign(defaultSettings(),state.settings);
   state.settings.units=Object.assign(defaultSettings().units,state.settings.units||{});
   state.settings.reminders=Object.assign(defaultSettings().reminders,state.settings.reminders||{});
-  state.vehicles.forEach(v=>{ if(!v.events) v.events=[]; if(!v.fixed) v.fixed=[]; if(!v.status) v.status='owned'; if(v.salePrice==null) v.salePrice=0; if(!v.icon) v.icon='sedan'; });
+  state.vehicles.forEach(v=>{ if(!v.events) v.events=[]; if(!v.fixed) v.fixed=[]; if(!v.status) v.status='owned'; if(v.salePrice==null) v.salePrice=0; if(!v.icon) v.icon='sedan'; v.plate=normalizePlate(v.plate); });
 }
 
 /* ---------- utilidades ---------- */
@@ -1138,7 +1139,7 @@ function renderCarsScreen(){
         ${v.photo?'':vic(v.icon||'sedan',`style="width:54px;height:54px;opacity:.9"`)}
         <span class="veh-badge" style="color:${st.hex}">● ${st.label}</span>
         <button class="veh-editbtn" onclick="event.stopPropagation();G.openForm('vehicle',null,'${v.id}')" aria-label="Editar vehículo">${ic('edit')}</button>
-        <span class="veh-plate">${escapeHtml(v.plate||'SIN PLACA')}</span>
+        <span class="veh-plate">${escapeHtml(normalizePlate(v.plate)||'SIN PLACA')}</span>
       </div>
       <div class="veh-info"><h4>${escapeHtml(v.name)}</h4><div class="sub">${escapeHtml(v.brand)} ${escapeHtml(v.model)} · ${v.year||'—'}</div>
         <div class="veh-stats">
@@ -1163,7 +1164,7 @@ function renderVehDetail(){
     <button class="vd-back" onclick="G.closeDetail()">${ic('back')}</button>
     <div class="vd-photo" style="${v.photo?`background:url('${escapeHtml(v.photo)}') center/cover`:''}">${v.photo?'':vic(v.icon||'sedan',`style="width:38px;height:38px"`)}</div>
     <div class="vd-info"><span class="veh-badge" style="color:${st.hex};position:static;display:inline-flex">● ${st.label}</span>
-      <h3>${escapeHtml(v.name)}</h3><div class="sub">${escapeHtml(v.brand)} ${escapeHtml(v.model)} · ${v.year||'—'} · ${escapeHtml(v.plate||'—')}</div>
+      <h3>${escapeHtml(v.name)}</h3><div class="sub">${escapeHtml(v.brand)} ${escapeHtml(v.model)} · ${v.year||'—'} · ${escapeHtml(normalizePlate(v.plate)||'—')}</div>
       <button class="btn btn-quiet btn-sm" style="margin-top:12px" onclick="G.openForm('vehicle',null,'${v.id}')">${ic('edit')}Editar vehículo</button>
     </div>`;
 
@@ -1212,7 +1213,7 @@ function panelGeneral(v){
         <div class="fk"><span class="k">Marca</span><span class="v">${escapeHtml(v.brand)||'—'}</span></div>
         <div class="fk"><span class="k">Modelo</span><span class="v">${escapeHtml(v.model)||'—'}</span></div>
         <div class="fk"><span class="k">Año</span><span class="v">${v.year||'—'}</span></div>
-        <div class="fk"><span class="k">Placa</span><span class="v">${escapeHtml(v.plate)||'—'}</span></div>
+        <div class="fk"><span class="k">Placa</span><span class="v">${escapeHtml(normalizePlate(v.plate))||'—'}</span></div>
         <div class="fk"><span class="k">Compra</span><span class="v">${fmtDate(v.purchaseDate)}</span></div>
         <div class="fk"><span class="k">Costo compra</span><span class="v" style="color:var(--mango)">${money(v.purchaseCost)}</span></div>
       </div>${v.notes?`<p class="tiny muted" style="margin:14px 0 0;white-space:pre-wrap">${escapeHtml(v.notes)}</p>`:''}</div>
@@ -1575,7 +1576,7 @@ function formVehicle(id){
   const html=`<h3>${editing?'Editar vehículo':'Agregar vehículo'}</h3><p class="lead">Datos básicos y de compra.</p>
     ${fieldText('f-name','Alias del vehículo',v.name,'Ej. Mazda 3 rojo',true)}
     <div class="field-row">${fieldText('f-brand','Marca',v.brand,'Mazda')}${fieldText('f-model','Modelo',v.model,'3 Touring')}</div>
-    <div class="field-row">${fieldText('f-year','Año',v.year,'2018')}${fieldText('f-plate','Placa',v.plate,'ABC123')}</div>
+    <div class="field-row">${fieldText('f-year','Año',v.year,'2018')}${fieldText('f-plate','Placa',normalizePlate(v.plate),'ABC123')}</div>
     <div class="field-row">${fieldText('f-mileage','Kilometraje',v.mileage!=null?fmtCOP(v.mileage):'','45.000')}${fieldDate('f-purchaseDate','Fecha de compra',v.purchaseDate)}</div>
     ${fieldMoney('f-purchaseCost','Costo de compra',v.purchaseCost,'45.000.000')}
     <div class="field">
@@ -1602,6 +1603,8 @@ function formVehicle(id){
   openSheet(html);
   attachMoneyMask('f-purchaseCost'); attachMoneyMask('f-mileage'); attachMoneyMask('f-salePrice');
   const fp=document.getElementById('f-photo'), prev=document.getElementById('photoPrev');
+  const plateInput=document.getElementById('f-plate');
+  plateInput.oninput=()=>{ plateInput.value=normalizePlate(plateInput.value); };
   fp.oninput=()=>{ const u=fp.value.trim(); if(u){ prev.classList.add('show'); prev.style.backgroundImage=`url('${u}')`; prev.textContent=''; } else { prev.classList.remove('show'); prev.style.backgroundImage=''; prev.textContent='Sin imagen'; } };
   document.querySelectorAll('#statusPick button').forEach(b=> b.onclick=()=> document.querySelectorAll('#statusPick button').forEach(x=>x.classList.toggle('on',x===b)));
   document.querySelectorAll('.icon-pick').forEach(b=> b.onclick=()=>{ document.querySelectorAll('.icon-pick').forEach(x=>x.classList.toggle('on',x===b)); });
@@ -1759,7 +1762,7 @@ const G={
     const iconBtn=document.querySelector('.icon-pick.on');
     const data={
       name, brand:document.getElementById('f-brand').value.trim(), model:document.getElementById('f-model').value.trim(),
-      year:Number(document.getElementById('f-year').value)||null, plate:document.getElementById('f-plate').value.trim().toUpperCase(),
+      year:Number(document.getElementById('f-year').value)||null, plate:normalizePlate(document.getElementById('f-plate').value),
       mileage:fromDistDisplay(parseMoney(document.getElementById('f-mileage').value)),
       purchaseDate:document.getElementById('f-purchaseDate').value, purchaseCost:parseMoney(document.getElementById('f-purchaseCost').value),
       photo:document.getElementById('f-photo').value.trim(), notes:document.getElementById('f-notes').value.trim(),
@@ -1855,6 +1858,7 @@ document.getElementById('fileInput').onchange=(ev)=>{
     if(!imported||!Array.isArray(imported.vehicles)){ toast('El archivo no tiene el formato esperado.','err'); return; }
     askConfirm('Importar datos', `Se encontraron ${imported.vehicles.length} vehículo(s). Se fusionarán con tus datos actuales.`, ()=>{
       imported.vehicles.forEach(iv=>{
+        iv.plate=normalizePlate(iv.plate);
         const ex=state.vehicles.find(v=>v.id===iv.id);
         if(ex){ const evs=ex.events||[]; (iv.events||[]).forEach(ie=>{ if(!evs.find(e=>e.id===ie.id)) evs.push(ie); });
           const fx=ex.fixed||[]; (iv.fixed||[]).forEach(ifx=>{ if(!fx.find(f=>f.id===ifx.id)) fx.push(ifx); });

@@ -647,8 +647,15 @@ function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); 
 function load(){
   const raw=localStorage.getItem(STORAGE_KEY);
   if(raw){
-    try{ state=JSON.parse(raw); }catch(e){ state={vehicles:seedData(),settings:defaultSettings()}; save(); }
-  } else { state={vehicles:seedData(),settings:defaultSettings()}; save(); }
+    try{
+      const parsed=JSON.parse(raw);
+      state=parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{vehicles:[],settings:defaultSettings()};
+    }catch(e){ state={vehicles:[],settings:defaultSettings()}; save(); }
+  } else { state={vehicles:[],settings:defaultSettings()}; save(); }
+  if(Array.isArray(state.vehicles) && state.vehicles.some(v=>v&&['v_mazda','v_renault'].includes(v.id))){
+    state.vehicles=[];
+    save();
+  }
   if(!state.vehicles) state.vehicles=[];
   if(!state.settings) state.settings=defaultSettings();
   state.settings=Object.assign(defaultSettings(),state.settings);
@@ -947,8 +954,19 @@ function renderHome(){
   const v=state.vehicles.find(x=>x.id===selectedId);
   const hero=document.getElementById('homeHero'), quick=document.getElementById('quickActions'), insights=document.getElementById('homeInsights');
   if(!v){
-    hero.innerHTML=`<div class="card empty">${ic('car')}<p>Aún no tienes vehículos</p><p class="tiny">Agrega el primero para empezar a llevar su control.</p>
-      <button class="btn btn-primary" style="margin-top:12px" onclick="G.openForm('vehicle')">${ic('plus')}Agregar vehículo</button></div>`;
+    hero.innerHTML=`<section class="card empty" style="padding:30px 20px 24px">
+      <div style="width:64px;height:64px;border-radius:20px;background:var(--sky-soft);color:var(--sky);display:grid;place-items:center;margin:0 auto 14px">${ic('car')}</div>
+      <h3 style="font-size:18px;margin:0 0 7px">Comienza tu garaje</h3>
+      <p class="tiny" style="max-width:280px;margin:0 auto 16px">Registra tu primer vehículo para organizar mantenimientos, documentos, gastos y combustible.</p>
+      <button class="btn btn-primary" onclick="G.openForm('vehicle')">${ic('plus')}Agregar mi primer vehículo</button>
+      <button class="btn btn-quiet btn-block" style="margin-top:8px" onclick="document.getElementById('fileInput').click()">Importar datos</button>
+    </section>
+    <section class="card" style="text-align:left">
+      <div class="card-h" style="margin-bottom:12px">Primeros pasos</div>
+      <div class="reg-row"><span class="set-ic" style="background:var(--sky-soft);color:var(--sky)">${ic('car')}</span><div><b>1. Agrega un vehículo</b><div class="tiny">Solo necesitas los datos básicos para comenzar.</div></div></div>
+      <div class="reg-row"><span class="set-ic" style="background:var(--lime-soft);color:var(--lime)">${ic('doc')}</span><div><b>2. Registra sus documentos</b><div class="tiny">SOAT, tecnomecánica y seguro, cuando quieras.</div></div></div>
+      <div class="reg-row"><span class="set-ic" style="background:var(--mango-soft);color:var(--mango)">${ic('wrench')}</span><div><b>3. Lleva su historial</b><div class="tiny">Añade tanqueos, mantenimientos y gastos.</div></div></div>
+    </section>`;
     quick.innerHTML=''; insights.innerHTML=''; return;
   }
   const m=metricsOf(v);
@@ -1771,45 +1789,6 @@ document.getElementById('fileInput').onchange=(ev)=>{
   };
   reader.readAsText(file);
 };
-
-/* ---- datos de ejemplo (solo la primera vez) ---- */
-function seedData(){
-  return [
-    { id:'v_mazda', name:'Mazda 3 rojo', brand:'Mazda', model:'3 Touring', year:2018, plate:'GKL482',
-      mileage:48500, purchaseDate:'2022-05-10', purchaseCost:62000000, status:'owned', salePrice:0, icon:'sedan',
-      photo:'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400&q=70',
-      notes:'Único dueño anterior. Color Soul Red.',
-      events:[
-        {id:'e1',type:'maintenance',date:'2024-02-12',title:'Cambio de aceite',mileage:41000,cost:185000,provider:'Serviteca El Rodeo'},
-        {id:'e2',type:'maintenance',date:'2024-08-03',title:'Cambio de llantas',mileage:45200,cost:1480000,provider:'Llantas y Rines JM'},
-        {id:'e3',type:'maintenance',date:'2025-01-20',title:'Frenos',mileage:47000,cost:520000,provider:'Taller Mazda Norte'},
-        {id:'e4',type:'accessory',date:'2023-06-15',title:'Cámara de reversa',cost:430000,provider:'AutoStereo Bogotá'},
-        {id:'e5',type:'accessory',date:'2024-03-22',title:'Polarizado 3M',cost:520000,provider:'Vidrios Premium'},
-        {id:'e6',type:'document',date:'2025-08-17',title:'SOAT',docType:'SOAT',expiry:'2026-09-17',cost:680000},
-        {id:'e7',type:'document',date:'2025-06-10',title:'Tecnomecánica',docType:'Tecnomecánica',expiry:'2026-11-10',cost:320000},
-        {id:'e8',type:'document',date:'2025-01-15',title:'Seguro todo riesgo',docType:'Seguro todo riesgo',expiry:'2027-01-15',cost:2100000,provider:'Sura'},
-        {id:'e9',type:'repair',date:'2024-11-05',title:'Reparación de A/C',mileage:46500,cost:740000,provider:'Refrigeración Automotriz'},
-        {id:'e10',type:'repair',date:'2023-12-01',title:'Amortiguadores',mileage:40000,cost:980000,provider:'Taller Mazda Norte'},
-        {id:'f1',type:'fuel',date:'2025-09-01',title:'Tanqueo',mileage:47600,qty:9.2,fuelUnit:'Galón',cost:138000,station:'Terpel'},
-        {id:'f2',type:'fuel',date:'2025-09-22',title:'Tanqueo',mileage:48010,qty:8.8,fuelUnit:'Galón',cost:134000,station:'Terpel'},
-        {id:'f3',type:'fuel',date:'2025-10-08',title:'Tanqueo',mileage:48500,qty:10.1,fuelUnit:'Galón',cost:152000,station:'Texaco'},
-        {id:'g1',type:'recurring',date:'2025-09-15',title:'Lavado',cost:25000,provider:'Lavadero Express'},
-      ],
-      fixed:[{id:'fx1',concept:'Parqueadero',amount:180000,since:'2024-01-01'}]},
-    { id:'v_renault', name:'Renault Duster', brand:'Renault', model:'Duster Zen', year:2021, plate:'HRT219',
-      mileage:31200, purchaseDate:'2023-09-18', purchaseCost:78000000, photo:'', status:'forsale', salePrice:72000000, icon:'suv',
-      notes:'Vehículo familiar. Uso de fin de semana.',
-      events:[
-        {id:'r1',type:'maintenance',date:'2024-04-10',title:'Revisión general',mileage:25000,cost:380000,provider:'Renault Minuto'},
-        {id:'r2',type:'maintenance',date:'2024-10-22',title:'Cambio de aceite',mileage:29000,cost:210000,provider:'Renault Minuto'},
-        {id:'r3',type:'accessory',date:'2023-10-05',title:'Barras de techo',cost:380000,provider:'Accesorios 4x4'},
-        {id:'r5',type:'document',date:'2025-09-20',title:'SOAT',docType:'SOAT',expiry:'2026-09-20',cost:710000},
-        {id:'r6',type:'document',date:'2025-07-01',title:'Impuesto vehicular',docType:'Impuesto vehicular',expiry:'2026-06-30',cost:540000},
-        {id:'r7',type:'repair',date:'2025-01-12',title:'Cambio de batería',mileage:30500,cost:420000,provider:'Baterías MAC'},
-      ],
-      fixed:[{id:'rfx1',concept:'Parqueadero',amount:120000,since:'2023-10-01'}]},
-  ];
-}
 
 /* ══════════════════════ INICIALIZACIÓN ══════════════════════ */
 load();

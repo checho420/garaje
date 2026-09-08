@@ -1457,11 +1457,8 @@ function renderSettingsScreen(){
   document.getElementById('setBody').innerHTML=`
     <div class="set-label" style="padding-left:0;padding-top:6px">Aplicación</div>
     <div class="set-group" id="installAppGroup" style="display:none">
-      <button class="set-row" id="installAppBtn" style="width:100%;text-align:left">
-        <span class="set-ic" style="background:var(--sky-soft);color:var(--sky)">${ic('ufo')}</span>
-        <div class="set-body"><div class="t">Instalar Garaje</div><div class="s" id="installAppHint">Usa Garaje como una aplicación</div></div>
-        <span class="set-val">${ic('back',`style="transform:rotate(180deg);width:16px;height:16px"`)}</span>
-      </button>
+      <button class="btn btn-primary btn-block" id="installAppBtn">${ic('ufo')}<span>Instalar Garaje</span></button>
+      <p class="tiny muted" id="installAppHint" style="text-align:center;margin:8px 0 0">Usa Garaje como una aplicación</p>
     </div>
     <div class="set-label" style="padding-left:0;padding-top:6px">Apariencia</div>
     <div class="set-group">

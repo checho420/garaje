@@ -1455,6 +1455,14 @@ function renderSettingsScreen(){
   const row=(icon,color,soft,t,sub,right)=>`<div class="set-row"><span class="set-ic" style="background:${soft};color:${color}">${ic(icon)}</span>
     <div class="set-body"><div class="t">${t}</div>${sub?`<div class="s">${sub}</div>`:''}</div>${right}</div>`;
   document.getElementById('setBody').innerHTML=`
+    <div class="set-label" style="padding-left:0;padding-top:6px">Aplicación</div>
+    <div class="set-group" id="installAppGroup" style="display:none">
+      <button class="set-row" id="installAppBtn" style="width:100%;text-align:left">
+        <span class="set-ic" style="background:var(--sky-soft);color:var(--sky)">${ic('ufo')}</span>
+        <div class="set-body"><div class="t">Instalar Garaje</div><div class="s" id="installAppHint">Usa Garaje como una aplicación</div></div>
+        <span class="set-val">${ic('back',`style="transform:rotate(180deg);width:16px;height:16px"`)}</span>
+      </button>
+    </div>
     <div class="set-label" style="padding-left:0;padding-top:6px">Apariencia</div>
     <div class="set-group">
       ${row('theme','var(--grape)','var(--grape-soft)','Tema oscuro','Más cómodo de noche',`<div class="switch ${s.theme==='dark'?'on':''}" id="themeSwitch"></div>`)}
@@ -1491,10 +1499,48 @@ function renderSettingsScreen(){
   bindSeg('langSeg',v=>{ state.settings.language=v; save(); toast(v==='en'?'English coming soon — showing Spanish for now.':'Idioma actualizado.'); });
   bindSeg('distSeg',v=>{ state.settings.units.distance=v; save(); toast('Unidad de distancia actualizada.'); });
   bindSeg('fuelSeg',v=>{ state.settings.units.fuel=v; save(); toast('Unidad de combustible actualizada.'); });
+  bindInstallAction();
 }
 function bindSeg(id,cb){
   const g=document.getElementById(id); if(!g) return;
   g.querySelectorAll('button').forEach(b=> b.onclick=()=>{ g.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); cb(b.dataset.v); });
+}
+function isStandalone(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
+}
+function isIOS(){
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent) ||
+    (window.navigator.platform==='MacIntel' && window.navigator.maxTouchPoints>1);
+}
+function bindInstallAction(){
+  const group=document.getElementById('installAppGroup');
+  const button=document.getElementById('installAppBtn');
+  const hint=document.getElementById('installAppHint');
+  if(!group||!button||!hint||isStandalone()) return;
+  group.style.display='';
+  if(isIOS()){
+    hint.textContent='Toca Compartir y luego “Agregar a pantalla de inicio”';
+    button.onclick=()=>openSheet(`<h3>Instalar Garaje</h3><p class="lead">En tu iPhone o iPad:</p>
+      <div class="card" style="text-align:left"><div class="reg-row"><span class="set-ic" style="background:var(--sky-soft);color:var(--sky)">${ic('export')}</span><div><b>1. Toca Compartir</b><div class="tiny">Usa el botón de compartir del navegador.</div></div></div>
+      <div class="reg-row"><span class="set-ic" style="background:var(--lime-soft);color:var(--lime)">${ic('plus')}</span><div><b>2. Agregar a pantalla de inicio</b><div class="tiny">Confirma con “Agregar” para instalar Garaje.</div></div></div></div>
+      <button class="btn btn-primary btn-block" onclick="G.closeSheet()">Entendido</button>`);
+    return;
+  }
+  if(window._deferredInstall){
+    hint.textContent='Acceso rápido y uso sin conexión';
+    button.onclick=async()=>{
+      const promptEvent=window._deferredInstall;
+      if(!promptEvent) return;
+      promptEvent.prompt();
+      const choice=await promptEvent.userChoice;
+      if(choice.outcome==='accepted') toast('Garaje se está instalando.');
+      window._deferredInstall=null;
+      group.style.display='none';
+    };
+    return;
+  }
+  hint.textContent='Abre el menú del navegador y elige “Instalar aplicación”';
+  button.onclick=()=>toast('Busca “Instalar aplicación” en el menú del navegador.');
 }
 function applyTheme(){ document.documentElement.setAttribute('data-theme', state.settings.theme==='dark'?'dark':'light');
   document.querySelector('meta[name=theme-color]').setAttribute('content', state.settings.theme==='dark'?'#0F1620':'#1B90F5'); }
@@ -1809,8 +1855,17 @@ if('serviceWorker' in navigator){
     navigator.serviceWorker.register('./sw.js').catch(()=>{ /* si falla (p.ej. abierto como file://), la app sigue funcionando igual, solo sin caché offline */ });
   });
 }
-// Sugerencia de instalación: guarda el evento para poder ofrecer un botón propio si se desea.
-window.addEventListener('beforeinstallprompt', (e)=>{ window._deferredInstall=e; });
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  window._deferredInstall=e;
+  bindInstallAction();
+});
+window.addEventListener('appinstalled',()=>{
+  window._deferredInstall=null;
+  const group=document.getElementById('installAppGroup');
+  if(group) group.style.display='none';
+  toast('Garaje quedó instalado en tu dispositivo.');
+});
 
 })();
 </script>

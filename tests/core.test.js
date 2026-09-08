@@ -81,7 +81,7 @@ function documentFunctions() {
         label:'Medellín',
         period:'Segundo semestre de 2026',
         hours:'5:00 a. m. – 8:00 p. m.',
-        byWeekday:{1:['5','6','7','8'],2:['1','2','3','4'],3:['0','1','2'],4:['3','4','5','6'],5:['7','8','9']}
+        byWeekday:{1:['5','8'],2:['1','4'],3:['0','2'],4:['3','6'],5:['7','9']}
       }
     };
     function normalizePlate(value){ return String(value||'').replace(/\s+/g,'').toUpperCase(); }
@@ -111,11 +111,11 @@ test('aplica la tabla 2026 de Medellín usando el número correcto para carros y
   const context = documentFunctions();
   const result = vm.runInContext(`
     [
-      picoPlacaStatus({plate:'ABC123',vehicleType:'car'},new Date(2026,8,8,10,0)).cls,
-      picoPlacaStatus({plate:'ABC348',vehicleType:'moto'},new Date(2026,8,8,10,0)).cls,
+      picoPlacaStatus({plate:'ABC124',vehicleType:'car'},new Date(2026,8,8,10,0)).cls,
+      picoPlacaStatus({plate:'ABC148',vehicleType:'moto'},new Date(2026,8,8,10,0)).cls,
       picoPlacaStatus({plate:'ABC348',vehicleType:'car'},new Date(2026,8,8,10,0)).cls,
-      picoPlacaStatus({plate:'ABC567',vehicleType:'car'},new Date(2026,8,7,10,0)).cls,
-      picoPlacaStatus({plate:'ABC123',vehicleType:'moto'},new Date(2026,8,9,10,0)).cls
+      picoPlacaStatus({plate:'ABC568',vehicleType:'car'},new Date(2026,8,7,10,0)).cls,
+      picoPlacaStatus({plate:'ABC023',vehicleType:'moto'},new Date(2026,8,9,10,0)).cls
     ]
   `, context);
 

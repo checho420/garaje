@@ -44,6 +44,7 @@ let state={vehicles:[],settings:defaultSettings()};
 let selectedId=null;
 let currentTab='s-inicio';
 let currentCat='general';
+let homeCat='general';
 let confirmCb=null;
 
 function defaultSettings(){
@@ -449,6 +450,30 @@ function drawHomeTrend(monthData){
   svg.innerHTML=out;
 }
 
+function renderHomeInsights(v){
+  const insights=document.getElementById('homeInsights');
+  const tabs=[['general','Generales','chart'],['fuel','Combustible','fuel'],['summary','Resumen','chart']];
+  const tabHtml=tabs.map(([key,label,icon])=>`<button class="home-insight-tab ${homeCat===key?'on':''}" onclick="G.selectHomePanel('${key}')">${ic(icon)} ${label}</button>`).join('');
+  const panel=homeCat==='fuel'?panelFuel(v):(homeCat==='summary'?panelSummary(v):panelGeneral(v));
+  insights.innerHTML=`
+    <section class="home-vehicle">
+      <span class="dot">${vic(v.icon||'sedan')}</span>
+      <span class="tx"><strong>${escapeHtml(v.name)}</strong><span>${escapeHtml(normalizePlate(v.plate)||'SIN PLACA')} · ${escapeHtml(v.brand||'')} ${escapeHtml(v.model||'')}</span></span>
+      <span class="change">Seleccionado</span>
+    </section>
+    <div class="home-insight-tabs">${tabHtml}</div>
+    <div class="home-insight-panel">${panel}</div>`;
+  if(homeCat==='summary') drawSummaryCharts(v);
+  if(homeCat==='fuel') drawFuelChart(v);
+}
+
+function selectHomePanel(tab){
+  if(!['general','fuel','summary'].includes(tab)) return;
+  homeCat=tab;
+  const v=state.vehicles.find(x=>x.id===selectedId);
+  if(v) renderHomeInsights(v);
+}
+
 function renderHome(){
   const hh=new Date().getHours();
   document.getElementById('greetLine').textContent = hh<12?'Buenos días':(hh<19?'Buenas tardes':'Buenas noches');
@@ -485,8 +510,6 @@ function renderHome(){
     </section>`;
     quick.innerHTML=''; insights.innerHTML=''; return;
   }
-  const m=metricsOf(v);
-
   // Muestra los dos documentos obligatorios con la misma jerarquía visual.
   const requiredDocs=['SOAT','Tecnomecánica'].map(type=>{
     const item=v.events.filter(e=>e.type==='document'&&(e.docType||e.title)===type)
@@ -525,74 +548,7 @@ function renderHome(){
     <button class="q" onclick="G.openForm('event','recurring',null,'${v.id}')"><span class="ic" style="background:${catSoft('recurring')};color:${catColor('recurring')}">${ic('cash')}</span><span class="lb">Gasto</span></button>
     <button class="q" onclick="G.openDetail('${v.id}')"><span class="ic" style="background:var(--lime-soft);color:var(--lime)">${ic('chart')}</span><span class="lb">Ver detalle</span></button>`;
 
-  // gasto mensual: este mes vs. el anterior, y tendencia de los últimos 6 meses
-  const monthData=monthlyTotals(v,6);
-  const thisMonth=monthData[monthData.length-1].total;
-  const prevMonth=monthData[monthData.length-2]?monthData[monthData.length-2].total:0;
-  const diff=thisMonth-prevMonth, diffGood=diff<=0;
-  const diffPctTxt = prevMonth>0 ? `${diffGood?'−':'+'}${Math.abs(diff/prevMonth*100).toFixed(0)}%` : (thisMonth>0?'nuevo':'—');
-  const hasAnySpend = monthData.some(x=>x.total>0);
-  let trendHtml='';
-  if(hasAnySpend){
-    trendHtml=`<section class="card">
-      <div style="display:flex;text-align:center;margin-bottom:14px">
-        <div style="flex:1"><div class="mi-lb">Gastado este mes</div><div style="font-weight:900;font-size:17px;margin-top:3px">${money(thisMonth)}</div></div>
-        <div style="width:1px;background:var(--edge)"></div>
-        <div style="flex:1"><div class="mi-lb">Vs. mes pasado</div><div style="font-weight:900;font-size:17px;margin-top:3px;color:${diffGood?'var(--lime)':'var(--coral)'}">${diffPctTxt}</div></div>
-        <div style="width:1px;background:var(--edge)"></div>
-        <div style="flex:1"><div class="mi-lb">Promedio mensual</div><div style="font-weight:900;font-size:17px;margin-top:3px">${m.spendPerMonth!=null?money(m.spendPerMonth):'—'}</div></div>
-      </div>
-      <div class="card-h" style="margin-bottom:8px">Últimos 6 meses</div>
-      <svg viewBox="0 0 280 130" style="width:100%;height:auto" id="homeTrendChart"></svg>
-    </section>`;
-  }
-
-  // consumo + recordatorios por km
-  const fm=fuelMetrics(v);
-  let gaugeHtml='';
-  if(fm.avgKmPerUnit){
-    const expected=42; const diffPct=((fm.avgKmPerUnit-expected)/expected)*100;
-    const good=diffPct>=0;
-    const pct=Math.max(0,Math.min(1,fm.avgKmPerUnit/70));
-    const circumf=202, offset=circumf-(circumf*pct);
-    gaugeHtml=`<section class="card gauge-card">
-      <div class="gauge"><svg viewBox="0 0 100 100">
-        <path d="M15 78 A43 43 0 1 1 85 78" fill="none" stroke="var(--edge)" stroke-width="10" stroke-linecap="round"/>
-        <path d="M15 78 A43 43 0 1 1 85 78" fill="none" stroke="var(--lime)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${circumf}" stroke-dashoffset="${offset}"/>
-      </svg><div style="text-align:center;margin-top:6px"><div class="val">${fm.avgKmPerUnit.toFixed(1)}</div><div class="u">${distUnit().toUpperCase()}/${(fm.unit||'GAL').slice(0,3).toUpperCase()}</div></div></div>
-      <div class="gc-body"><h4>${good?'Rinde mejor de lo esperado':'Rinde bajo lo esperado'}</h4>
-        <p>Un ${escapeHtml(v.brand)} ${escapeHtml(v.model)} de ${v.year||'—'} promedia ~${expected} ${distUnit()}/gal en ciudad.</p>
-        <span class="delta ${good?'good':'bad'}">${ic(good?'trend':'trenddown')}${Math.abs(diffPct).toFixed(0)}% ${good?'sobre':'bajo'} el promedio</span>
-      </div></section>`;
-  }
-  // recordatorio por km: próximo mantenimiento de aceite (cada 5000km) y llantas (cada 10000km)
-  const lastOil=v.events.filter(e=>e.type==='maintenance'&&/aceite/i.test(e.title)).sort((a,b)=>(b.date||'').localeCompare(a.date||''))[0];
-  const lastTire=v.events.filter(e=>e.type==='maintenance'&&/llanta/i.test(e.title)).sort((a,b)=>(b.date||'').localeCompare(a.date||''))[0];
-  const km=Number(v.mileage)||0;
-  const kmRows=[];
-  if(lastOil&&Number(lastOil.mileage)>0){
-    const base=Number(lastOil.mileage);
-    const next=base+5000, left=next-km, pct=Math.max(0,Math.min(1,1-left/5000));
-    kmRows.push({t:'Cambio de aceite',ic:'wrench',color:catColor('maintenance'),soft:catSoft('maintenance'),left,pct,base,every:5000});
-  }
-  if(lastTire&&Number(lastTire.mileage)>0){
-    const base=Number(lastTire.mileage);
-    const next=base+10000, left=next-km, pct=Math.max(0,Math.min(1,1-left/10000));
-    kmRows.push({t:'Rotación de llantas',ic:'gauge',color:'var(--lime)',soft:'var(--lime-soft)',left,pct,base,every:10000});
-  }
-  let kmHtml='';
-  if(kmRows.length){
-    kmHtml=`<section class="card">${kmRows.map(r=>`
-      <div class="km-row">
-        <span class="km-ic" style="background:${r.soft};color:${r.color}">${ic(r.ic)}</span>
-        <div class="km-body">
-          <div class="km-top"><span class="t">${r.t}</span><span class="r">${r.left<=0?'¡vence ya!':'faltan '+toDistDisplay(r.left).toLocaleString()+' '+distUnit()}</span></div>
-          <div class="track"><div class="fill" style="width:${(r.pct*100).toFixed(0)}%;background:${r.left<=0?'var(--coral)':r.color}"></div></div>
-          <div class="km-sub">${toDistDisplay(km).toLocaleString()} de ${toDistDisplay(r.base+r.every).toLocaleString()} ${distUnit()} · cada ${toDistDisplay(r.every).toLocaleString()} ${distUnit()}</div>
-        </div></div>`).join('')}</section>`;
-  }
-  insights.innerHTML = trendHtml + gaugeHtml + kmHtml || `<div class="card empty">${ic('fuel')}<p>Sin tanqueos aún</p><p class="tiny">Registra tu primer tanqueo para ver el rendimiento.</p></div>`;
-  if(hasAnySpend) drawHomeTrend(monthData);
+  renderHomeInsights(v);
 }
 
 /* ══════════════════════ DOCUMENTOS ══════════════════════ */
@@ -1248,6 +1204,7 @@ const G={
   },
   closeSheet(){ closeSheet(); },
   selectHome(id){ selectedId=id; renderHome(); },
+  selectHomePanel(tab){ selectHomePanel(tab); },
   openDetail(id){ openVehDetail(id,'general'); },
   closeDetail(){ closeVehDetail(); },
   goDocsFor(id){ selectedId=id; goTab('s-docs'); },
@@ -1410,4 +1367,3 @@ window.addEventListener('appinstalled',()=>{
 });
 
 })();
-

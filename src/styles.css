@@ -182,6 +182,18 @@ h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.02em}
 .sec-head{display:flex;align-items:baseline;justify-content:space-between;padding:22px 20px 10px}
 .sec-head h3{font-size:17px}
 .sec-head button{font-size:13.5px;font-weight:800;color:var(--sky)}
+.home-vehicle{margin:0 20px 14px;padding:13px 15px;background:var(--paper);border:1.5px solid var(--sky);
+  border-radius:var(--r-md);display:flex;align-items:center;gap:11px;box-shadow:var(--shadow)}
+.home-vehicle .dot{width:40px;height:40px;border-radius:13px;background:var(--sky-soft);color:var(--sky);display:grid;place-items:center;flex:none}
+.home-vehicle .dot svg{width:22px;height:22px}
+.home-vehicle .tx{min-width:0;flex:1}
+.home-vehicle .tx strong{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-vehicle .tx span{display:block;color:var(--ink-2);font-size:12px;font-weight:700;margin-top:2px}
+.home-vehicle .change{color:var(--sky);font-size:12px;font-weight:900}
+.home-insight-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 20px 12px;padding:4px;background:var(--paper-2);border-radius:var(--r-md)}
+.home-insight-tab{padding:9px 4px;border-radius:10px;color:var(--ink-2);font-size:12px;font-weight:900}
+.home-insight-tab.on{background:var(--sky);color:#fff;box-shadow:0 3px 10px rgba(27,144,245,.24)}
+.home-insight-panel{padding:0 0 4px}
 
 /* ── Medidor de consumo ── */
 .gauge-card{display:flex;gap:16px;align-items:center}
@@ -488,4 +500,3 @@ h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.02em}
 .link-danger{color:var(--coral);font-weight:800;font-size:13.5px;text-align:center;display:block;width:100%;padding:10px}
 
 @media (prefers-reduced-motion:reduce){*{transition-duration:.01s!important;animation-duration:.01s!important}}
-

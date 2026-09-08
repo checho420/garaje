@@ -54,8 +54,9 @@ function normalizePlate(value){ return String(value||'').replace(/\s+/g,'').toUp
 const PICO_PLACA_RULES={
   medellin:{
     label:'Medellín',
+    period:'Segundo semestre de 2026',
     hours:'5:00 a. m. – 8:00 p. m.',
-    byWeekday:{1:['1','2'],2:['3','4'],3:['5','6'],4:['7','8'],5:['9','0']}
+    byWeekday:{1:['5','6','7','8'],2:['1','2','3','4'],3:['0','1','2'],4:['3','4','5','6'],5:['7','8','9']}
   }
 };
 
@@ -513,7 +514,7 @@ function picoPlacaCard(v){
   const isMoto=status.vehicleType==='moto', next=status.next?`Próxima restricción: ${['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][status.next.date.getDay()]} ${fmtDate(picoDateKey(status.next.date))} · placas ${status.next.digits.join(' y ')}`:'Sin próxima restricción';
   const plate=normalizePlate(v.plate)||'SIN PLACA';
   return `<div class="pico-card" style="--pico-color:${color}">
-    <div class="pico-head"><span class="pico-icon" style="background:${soft};color:${color}">${ic(isMoto?'road':'road')}</span><div><div class="card-h">Pico y placa · ${isMoto?'Moto':'Carro'}</div><div class="pico-city">${status.city} · ${isMoto?'primer':'último'} dígito ${status.digit||'—'}</div></div><span class="pico-plate" aria-label="Placa ${plate}" style="background:${soft};color:${color};border-color:${color}">${plate}</span></div>
+    <div class="pico-head"><span class="pico-icon" style="background:${soft};color:${color}">${ic(isMoto?'road':'road')}</span><div><div class="card-h">Pico y placa · ${isMoto?'Moto':'Carro'}</div><div class="pico-city">${status.city} · ${status.city==='Medellín'?'2.º semestre 2026 · ':''}${isMoto?'primer':'último'} número ${status.digit||'—'}</div></div><span class="pico-plate" aria-label="Placa ${plate}" style="background:${soft};color:${color};border-color:${color}">${plate}</span></div>
     <div class="pico-status" style="color:${color}">${status.cls==='bad'?'No circular ahora':(status.cls==='soon'?'Circular fuera del horario':'Puede circular hoy')}</div>
     <div class="pico-detail">${status.detail}</div>
     <div class="pico-next">${next}</div>

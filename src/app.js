@@ -125,6 +125,7 @@ function normalizeVehicle(raw,issues,usedVehicleIds){
     photo:String(raw.photo||'').trim(),notes:String(raw.notes||'').trim(),
     status:Object.prototype.hasOwnProperty.call(OWN_STATUS,raw.status)?raw.status:'owned',
     salePrice:Math.max(0,finiteOr(raw.salePrice)),icon:String(raw.icon||'sedan'),
+    vehicleType:raw.vehicleType==='moto'||raw.icon==='moto'?'moto':'car',
     picoCity:Object.prototype.hasOwnProperty.call(PICO_PLACA_RULES,raw.picoCity)?raw.picoCity:'medellin',
     events,fixed
   };
@@ -220,8 +221,11 @@ function picoDateKey(date){
 }
 function picoPlacaStatus(v,now=new Date()){
   const city=PICO_PLACA_RULES[v.picoCity]||PICO_PLACA_RULES.medellin;
-  const plate=normalizePlate(v.plate), digit=plate.match(/\d$/)?.[0];
-  if(!digit) return {cls:'missing',label:'Sin placa',detail:'Registra la placa para calcular el pico y placa.',city:city.label};
+  const plate=normalizePlate(v.plate);
+  const isMoto=v.vehicleType==='moto'||v.icon==='moto';
+  const digit=isMoto?plate.match(/\d/)?.[0]:plate.match(/\d$/)?.[0];
+  const digitLabel=isMoto?'primer dígito':'último dígito';
+  if(!digit) return {cls:'missing',label:'Sin placa',detail:'Registra la placa para calcular el pico y placa.',city:city.label,vehicleType:isMoto?'moto':'car'};
   const weekday=now.getDay(), restricted=city.byWeekday[weekday]||[];
   const hour=now.getHours()+now.getMinutes()/60, inHours=hour>=5&&hour<20;
   const restrictedToday=restricted.includes(digit);
@@ -231,9 +235,10 @@ function picoPlacaStatus(v,now=new Date()){
     const digits=city.byWeekday[candidate.getDay()]||[];
     if(digits.includes(digit)){ next={date:candidate,digits}; break; }
   }
-  if(restrictedToday&&inHours) return {cls:'bad',label:'No puede circular',detail:`Placa terminada en ${digit}. Restricción hoy ${city.hours}.`,city:city.label,digit,next};
-  if(restrictedToday) return {cls:'soon',label:'Restricción hoy',detail:`Placa terminada en ${digit}. Fuera del horario: ${city.hours}.`,city:city.label,digit,next};
-  return {cls:'ok',label:'Puede circular',detail:restricted.length?`Hoy restringen ${restricted.join(' y ')} · ${city.hours}.`:'Sin restricción hoy.',city:city.label,digit,next};
+  const vehicleLabel=isMoto?'Moto':'Vehículo particular';
+  if(restrictedToday&&inHours) return {cls:'bad',label:'No puede circular',detail:`${vehicleLabel}: ${digitLabel} ${digit}. Restricción hoy ${city.hours}.`,city:city.label,digit,next,vehicleType:isMoto?'moto':'car'};
+  if(restrictedToday) return {cls:'soon',label:'Restricción hoy',detail:`${vehicleLabel}: ${digitLabel} ${digit}. Fuera del horario: ${city.hours}.`,city:city.label,digit,next,vehicleType:isMoto?'moto':'car'};
+  return {cls:'ok',label:'Puede circular',detail:restricted.length?`${vehicleLabel}: hoy restringen ${restricted.join(' y ')} · ${city.hours}.`:'Sin restricción hoy.',city:city.label,digit,next,vehicleType:isMoto?'moto':'car'};
 }
 
 /* ---------- cálculos por vehículo (idénticos a la versión anterior) ---------- */
@@ -506,9 +511,9 @@ function picoPlacaCard(v){
   const status=picoPlacaStatus(v);
   const color=status.cls==='bad'?'var(--coral)':(status.cls==='soon'?'var(--mango)':(status.cls==='missing'?'var(--ink-3)':'var(--lime)'));
   const soft=status.cls==='bad'?'var(--coral-soft)':(status.cls==='soon'?'var(--mango-soft)':(status.cls==='missing'?'var(--paper-2)':'var(--lime-soft)'));
-  const next=status.next?`Próxima restricción: ${['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][status.next.date.getDay()]} ${fmtDate(picoDateKey(status.next.date))} · placas ${status.next.digits.join(' y ')}`:'Sin próxima restricción';
+  const isMoto=status.vehicleType==='moto', next=status.next?`Próxima restricción: ${['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][status.next.date.getDay()]} ${fmtDate(picoDateKey(status.next.date))} · placas ${status.next.digits.join(' y ')}`:'Sin próxima restricción';
   return `<div class="pico-card" style="--pico-color:${color}">
-    <div class="pico-head"><span class="pico-icon" style="background:${soft};color:${color}">${ic('road')}</span><div><div class="card-h">Pico y placa</div><div class="pico-city">${status.city} · placa ${status.digit||'—'}</div></div><span class="state-chip" style="margin-left:auto;background:${soft};color:${color}">${status.label}</span></div>
+    <div class="pico-head"><span class="pico-icon" style="background:${soft};color:${color}">${ic(isMoto?'road':'road')}</span><div><div class="card-h">Pico y placa · ${isMoto?'Moto':'Carro'}</div><div class="pico-city">${status.city} · ${isMoto?'primer':'último'} dígito ${status.digit||'—'}</div></div><span class="state-chip" style="margin-left:auto;background:${soft};color:${color}">${status.label}</span></div>
     <div class="pico-status" style="color:${color}">${status.cls==='bad'?'No circular ahora':(status.cls==='soon'?'Circular fuera del horario':'Puede circular hoy')}</div>
     <div class="pico-detail">${status.detail}</div>
     <div class="pico-next">${next}</div>
@@ -1084,6 +1089,10 @@ function formVehicle(id){
   const html=`<h3>${editing?'Editar vehículo':'Agregar vehículo'}</h3><p class="lead">Datos básicos y de compra.</p>
     ${fieldText('f-name','Alias del vehículo',v.name,'Ej. Mazda 3 rojo',true)}
     <div class="field-row">${fieldText('f-brand','Marca',v.brand,'Mazda')}${fieldText('f-model','Modelo',v.model,'3 Touring')}</div>
+    <div class="field"><label>Tipo de vehículo</label><select id="f-vehicleType">
+      <option value="car" ${(v.vehicleType!=='moto'&&v.icon!=='moto')?'selected':''}>Carro</option>
+      <option value="moto" ${(v.vehicleType==='moto'||v.icon==='moto')?'selected':''}>Moto</option>
+    </select></div>
     <div class="field-row">${fieldText('f-year','Año',v.year,'2018')}${fieldText('f-plate','Placa',normalizePlate(v.plate),'ABC123')}</div>
     <div class="field-row">${fieldText('f-mileage','Kilometraje',v.mileage!=null?fmtCOP(v.mileage):'','45.000')}${fieldDate('f-purchaseDate','Fecha de compra',v.purchaseDate)}</div>
     ${fieldMoney('f-purchaseCost','Costo de compra',v.purchaseCost,'45.000.000')}
@@ -1278,7 +1287,8 @@ const G={
       purchaseDate:document.getElementById('f-purchaseDate').value, purchaseCost:parseMoney(document.getElementById('f-purchaseCost').value),
       photo:document.getElementById('f-photo').value.trim(), notes:document.getElementById('f-notes').value.trim(),
       status: stBtn?stBtn.dataset.s:'owned', salePrice:parseMoney(document.getElementById('f-salePrice').value),
-      icon: iconBtn?iconBtn.dataset.icon:'sedan', picoCity:'medellin',
+      icon: iconBtn?iconBtn.dataset.icon:'sedan',
+      vehicleType:document.getElementById('f-vehicleType').value, picoCity:'medellin',
     };
     if(id){ Object.assign(state.vehicles.find(x=>x.id===id),data); toast('Vehículo actualizado.'); }
     else { const nv={id:uid(),...data,events:[],fixed:[]}; state.vehicles.unshift(nv); selectedId=nv.id; toast('Vehículo agregado.'); }

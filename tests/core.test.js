@@ -76,6 +76,14 @@ function documentFunctions() {
     'function validDate(iso)',
     '/* ---------- cálculos por vehículo',
     `
+    const PICO_PLACA_RULES={
+      medellin:{
+        label:'Medellín',
+        hours:'5:00 a. m. – 8:00 p. m.',
+        byWeekday:{1:['1','2'],2:['3','4'],3:['5','6'],4:['7','8'],5:['9','0']}
+      }
+    };
+    function normalizePlate(value){ return String(value||'').replace(/\s+/g,'').toUpperCase(); }
     `
   );
 }
@@ -96,4 +104,17 @@ test('el progreso del documento queda dentro del círculo válido', () => {
   `, context);
 
   assert.ok(result.every(value => value >= 0 && value <= 1));
+});
+
+test('usa el último dígito para carros y el primero para motos', () => {
+  const context = documentFunctions();
+  const result = vm.runInContext(`
+    [
+      picoPlacaStatus({plate:'ABC123',vehicleType:'car'},new Date(2026,8,8,10,0)).cls,
+      picoPlacaStatus({plate:'ABC348',vehicleType:'moto'},new Date(2026,8,8,10,0)).cls,
+      picoPlacaStatus({plate:'ABC348',vehicleType:'car'},new Date(2026,8,8,10,0)).cls
+    ]
+  `, context);
+
+  assert.deepEqual(Array.from(result), ['bad', 'bad', 'ok']);
 });

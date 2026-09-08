@@ -655,7 +655,7 @@ function load(){
       state=parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{vehicles:[],settings:defaultSettings()};
     }catch(e){ state={vehicles:[],settings:defaultSettings()}; save(); }
   } else { state={vehicles:[],settings:defaultSettings()}; save(); }
-  if(Array.isArray(state.vehicles) && state.vehicles.some(v=>v&&['v_mazda','v_renault'].includes(v.id))){
+  if(Array.isArray(state.vehicles) && state.vehicles.length>0 && state.vehicles.every(v=>v&&['v_mazda','v_renault'].includes(v.id))){
     state.vehicles=[];
     save();
   }

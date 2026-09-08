@@ -2,6 +2,7 @@
   "name": "Garaje — Control de vehículos",
   "short_name": "Garaje",
   "description": "Administra tus vehículos: mantenimientos, combustible, documentos, gastos y venta.",
+  "id": "./index.html",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

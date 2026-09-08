@@ -11,11 +11,12 @@
    dentro del propio navegador, y no se tocan al actualizar el caché.
    ========================================================================= */
 
-const CACHE_NAME = 'garaje-v2';
+const CACHE_NAME = 'garaje-v3';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
+  './icons/app-icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-512-maskable.png',
@@ -50,7 +51,24 @@ self.addEventListener('fetch', (event) => {
   const isOwnOrigin = url.origin === self.location.origin;
 
   if (isOwnOrigin) {
-    // Stale-while-revalidate: responde de caché al instante y refresca detrás.
+    // Las navegaciones consultan primero la red para recibir despliegues nuevos.
+    // Si no hay conexión, se conserva la última versión funcional en caché.
+    if (req.mode === 'navigate' || url.pathname.endsWith('/index.html')) {
+      event.respondWith(
+        fetch(req)
+          .then((res) => {
+            if (res && res.status === 200) {
+              const copy = res.clone();
+              caches.open(CACHE_NAME).then((c) => c.put(req, copy));
+            }
+            return res;
+          })
+          .catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
+      );
+      return;
+    }
+
+    // Para recursos estáticos, responde de caché y actualiza detrás.
     event.respondWith(
       caches.match(req).then((cached) => {
         const network = fetch(req)

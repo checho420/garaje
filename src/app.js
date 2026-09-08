@@ -235,10 +235,9 @@ function picoPlacaStatus(v,now=new Date()){
     const digits=city.byWeekday[candidate.getDay()]||[];
     if(digits.includes(digit)){ next={date:candidate,digits}; break; }
   }
-  const vehicleLabel=isMoto?'Moto':'Vehículo particular';
-  if(restrictedToday&&inHours) return {cls:'bad',label:'No puede circular',detail:`${vehicleLabel}: ${digitLabel} ${digit}. Restricción hoy ${city.hours}.`,city:city.label,digit,next,vehicleType:isMoto?'moto':'car'};
-  if(restrictedToday) return {cls:'soon',label:'Restricción hoy',detail:`${vehicleLabel}: ${digitLabel} ${digit}. Fuera del horario: ${city.hours}.`,city:city.label,digit,next,vehicleType:isMoto?'moto':'car'};
-  return {cls:'ok',label:'Puede circular',detail:restricted.length?`${vehicleLabel}: hoy restringen ${restricted.join(' y ')} · ${city.hours}.`:'Sin restricción hoy.',city:city.label,digit,next,vehicleType:isMoto?'moto':'car'};
+  if(restrictedToday&&inHours) return {cls:'bad',label:'No puede circular',detail:`${digitLabel} ${digit}. Restricción hoy ${city.hours}.`,city:city.label,digit,next,vehicleType:isMoto?'moto':'car'};
+  if(restrictedToday) return {cls:'soon',label:'Restricción hoy',detail:`${digitLabel} ${digit}. Fuera del horario: ${city.hours}.`,city:city.label,digit,next,vehicleType:isMoto?'moto':'car'};
+  return {cls:'ok',label:'Puede circular',detail:restricted.length?`Hoy restringen ${restricted.join(' y ')} · ${city.hours}.`:'Sin restricción hoy.',city:city.label,digit,next,vehicleType:isMoto?'moto':'car'};
 }
 
 /* ---------- cálculos por vehículo (idénticos a la versión anterior) ---------- */
@@ -512,8 +511,9 @@ function picoPlacaCard(v){
   const color=status.cls==='bad'?'var(--coral)':(status.cls==='soon'?'var(--mango)':(status.cls==='missing'?'var(--ink-3)':'var(--lime)'));
   const soft=status.cls==='bad'?'var(--coral-soft)':(status.cls==='soon'?'var(--mango-soft)':(status.cls==='missing'?'var(--paper-2)':'var(--lime-soft)'));
   const isMoto=status.vehicleType==='moto', next=status.next?`Próxima restricción: ${['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][status.next.date.getDay()]} ${fmtDate(picoDateKey(status.next.date))} · placas ${status.next.digits.join(' y ')}`:'Sin próxima restricción';
+  const plate=normalizePlate(v.plate)||'SIN PLACA';
   return `<div class="pico-card" style="--pico-color:${color}">
-    <div class="pico-head"><span class="pico-icon" style="background:${soft};color:${color}">${ic(isMoto?'road':'road')}</span><div><div class="card-h">Pico y placa · ${isMoto?'Moto':'Carro'}</div><div class="pico-city">${status.city} · ${isMoto?'primer':'último'} dígito ${status.digit||'—'}</div></div><span class="state-chip" style="margin-left:auto;background:${soft};color:${color}">${status.label}</span></div>
+    <div class="pico-head"><span class="pico-icon" style="background:${soft};color:${color}">${ic(isMoto?'road':'road')}</span><div><div class="card-h">Pico y placa · ${isMoto?'Moto':'Carro'}</div><div class="pico-city">${status.city} · ${isMoto?'primer':'último'} dígito ${status.digit||'—'}</div></div><span class="state-chip" style="margin-left:auto;background:${soft};color:${color}">${plate}</span></div>
     <div class="pico-status" style="color:${color}">${status.cls==='bad'?'No circular ahora':(status.cls==='soon'?'Circular fuera del horario':'Puede circular hoy')}</div>
     <div class="pico-detail">${status.detail}</div>
     <div class="pico-next">${next}</div>

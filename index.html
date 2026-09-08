@@ -283,11 +283,14 @@ h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.02em}
 
 /* ── Barra inferior + FAB ── */
 .tabbar{
-  position:absolute;bottom:0;left:0;right:0;z-index:50;
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
   background:var(--paper);border-top:1px solid var(--edge);
   display:grid;grid-template-columns:repeat(5,1fr);align-items:center;
   padding:9px 4px calc(9px + env(safe-area-inset-bottom));
   transition:background .25s;
+}
+@media (min-width:900px){
+  .tabbar{position:absolute}
 }
 .tab{display:flex;flex-direction:column;align-items:center;gap:4px;padding:5px 0;color:var(--ink-3);transition:.15s}
 .tab svg{width:23px;height:23px}
@@ -806,6 +809,7 @@ const I={
   check:'<polyline points="20 6 9 17 4 12"/>',
   x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
   warn:'<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  shield:'<path d="M12 3 20 6v5c0 5-3.4 8.7-8 10-4.6-1.3-8-5-8-10V6z"/><polyline points="8 12 11 15 16 9"/>',
   gauge:'<path d="M12 14l4-4M3 17a9 9 0 1 1 18 0"/><circle cx="12" cy="14" r="1.6"/>',
   clock:'<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/>',
   trend:'<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
@@ -939,6 +943,30 @@ function drawHomeTrend(monthData){
   svg.innerHTML=out;
 }
 
+function requiredDocumentCards(v){
+  const required=[{type:'SOAT',icon:'shield'},{type:'Tecnomecánica',icon:'tool'}];
+  return `<section class="card" style="margin-top:14px"><div class="card-h">Documentos obligatorios</div>
+    ${required.map(doc=>{
+      const item=v.events.filter(e=>e.type==='document'&&((e.docType||e.title)===doc.type)).sort((a,b)=>(b.date||'').localeCompare(a.date||''))[0];
+      const status=item&&item.expiry?docStatus(item.expiry):{label:item?'Sin vencimiento':'Sin registrar',cls:item?'soon':'missing',days:null};
+      const colors={
+        ok:{color:'var(--lime)',soft:'var(--lime-soft)'},
+        soon:{color:'var(--mango)',soft:'var(--mango-soft)'},
+        bad:{color:'var(--coral)',soft:'var(--coral-soft)'},
+        missing:{color:'var(--ink-3)',soft:'var(--paper-2)'}
+      }[status.cls]||{color:'var(--ink-3)',soft:'var(--paper-2)'};
+      const action=item?`G.openForm('event','document','${item.id}','${v.id}')`:`G.openForm('event','document',null,'${v.id}')`;
+      const detail=item&&item.expiry
+        ? (status.cls==='bad'?`Venció el ${fmtDate(item.expiry)}`:`Vence el ${fmtDate(item.expiry)}`)
+        : (item?'Agrega una fecha de vencimiento':'Toca para registrar');
+      return `<button class="reg-row" style="width:100%;text-align:left" onclick="${action}">
+        <span class="reg-ic" style="background:${colors.soft};color:${colors.color}">${ic(doc.icon)}</span>
+        <span class="reg-body"><span class="t">${doc.type}</span><span class="s">${detail}</span></span>
+        <span class="state-chip" style="margin-top:0;background:${colors.soft};color:${colors.color}">${status.label}</span>
+      </button>`;
+    }).join('')}</section>`;
+}
+
 function renderHome(){
   const hh=new Date().getHours();
   document.getElementById('greetLine').textContent = hh<12?'Buenos días':(hh<19?'Buenas tardes':'Buenas noches');
@@ -1004,7 +1032,7 @@ function renderHome(){
       <div style="width:52px;height:52px;border-radius:16px;background:var(--lime-soft);color:var(--lime);display:grid;place-items:center;margin:0 auto 10px">${ic('check')}</div>
       <h3 style="font-size:16px">Todo al día</h3><p class="tiny muted" style="margin:4px 0 0">No tienes documentos por vencer pronto.</p></section>`;
   }
-  hero.innerHTML=heroHtml;
+  hero.innerHTML=heroHtml + requiredDocumentCards(v);
 
   // acciones rápidas
   quick.innerHTML=`
@@ -1645,6 +1673,20 @@ function formEvent(type,vehId,eventId){
   openSheet(html);
   attachMoneyMask('f-cost'); attachMoneyMask('f-mileage'); attachMoneyMask('f-mileage2');
   if(type==='fuel'&&e.mileage) document.getElementById('f-mileage').value=fmtCOP(e.mileage);
+  if(type==='document'){
+    const dateInput=document.getElementById('f-date');
+    const expiryInput=document.getElementById('f-expiry');
+    const typeInput=document.getElementById('f-docType');
+    const syncExpiry=()=>{
+      if(!dateInput||!expiryInput||!typeInput||!['SOAT','Tecnomecánica'].includes(typeInput.value)||!dateInput.value) return;
+      const start=new Date(`${dateInput.value}T00:00:00`);
+      start.setFullYear(start.getFullYear()+1);
+    expiryInput.value=`${start.getFullYear()}-${String(start.getMonth()+1).padStart(2,'0')}-${String(start.getDate()).padStart(2,'0')}`;
+    };
+    dateInput?.addEventListener('change',syncExpiry);
+    typeInput?.addEventListener('change',()=>{ if(!eventId||!expiryInput.value) syncExpiry(); });
+    if(!eventId&&!expiryInput.value) syncExpiry();
+  }
 }
 
 /* --- Formulario: gasto fijo mensual --- */

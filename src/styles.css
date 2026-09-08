@@ -490,6 +490,22 @@ h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.02em}
 .toast.ok svg{color:var(--lime)}.toast.err svg{color:var(--coral)}
 @keyframes toastin{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
 
+/* aviso de instalación PWA */
+.install-nudge{position:absolute;left:14px;right:14px;bottom:calc(78px + env(safe-area-inset-bottom));z-index:65;
+  display:flex;align-items:center;gap:10px;padding:12px;background:var(--paper);
+  border:1px solid var(--edge);border-left:4px solid var(--sky);border-radius:18px;
+  box-shadow:var(--shadow-lift);animation:installnudgein .3s ease}
+.install-nudge[hidden]{display:none}
+.install-nudge-icon{width:36px;height:36px;display:grid;place-items:center;flex:none;border-radius:12px;
+  background:var(--sky-soft);color:var(--sky)}
+.install-nudge-icon svg{width:21px;height:21px}
+.install-nudge-copy{display:flex;flex-direction:column;min-width:0;flex:1}
+.install-nudge-copy strong{font-size:13.5px}
+.install-nudge-copy span{font-size:11px;color:var(--ink-2);line-height:1.25;margin-top:2px}
+.install-nudge .btn{white-space:nowrap}
+.install-nudge-close{width:22px;height:28px;color:var(--ink-3);font-size:22px;line-height:1}
+@keyframes installnudgein{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
 /* confirmación dentro de hoja */
 .confirm-actions{display:flex;gap:10px;margin-top:6px}
 .confirm-actions .btn{flex:1}

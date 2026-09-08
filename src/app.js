@@ -1028,43 +1028,76 @@ function isSafariIOS(){
   return isIOS() && /safari/i.test(window.navigator.userAgent) &&
     !/crios|fxios|edgios|opios/i.test(window.navigator.userAgent);
 }
+function isEmbeddedBrowser(){
+  return /instagram|fbav|fban|; wv\)|line\/|telegram|tiktok|gsa\//i.test(window.navigator.userAgent);
+}
+function installDismissed(){
+  const until=Number(localStorage.getItem('garaje_install_dismissed_until')||0);
+  return until>Date.now();
+}
+function dismissInstallNudge(){
+  localStorage.setItem('garaje_install_dismissed_until',String(Date.now()+7*24*60*60*1000));
+  const nudge=document.getElementById('installNudge');
+  if(nudge) nudge.hidden=true;
+}
+function showInstallGuide(){
+  if(isStandalone()) return;
+  if(isEmbeddedBrowser()){
+    openSheet(`<h3>Abre Garaje en tu navegador</h3><p class="lead">Para instalar la aplicación, abre esta página en Safari o Chrome.</p>
+      <div class="card" style="text-align:left"><div class="reg-row"><span class="set-ic" style="background:var(--sky-soft);color:var(--sky)">${ic('globe')}</span><div><b>1. Abre el menú del navegador</b><div class="tiny">Busca “Abrir en Safari” o “Abrir en Chrome”.</div></div></div>
+      <div class="reg-row"><span class="set-ic" style="background:var(--lime-soft);color:var(--lime)">${ic('ufo')}</span><div><b>2. Instala Garaje</b><div class="tiny">Cuando se abra en el navegador, pulsa nuevamente instalar.</div></div></div></div>
+      <button class="btn btn-primary btn-block" onclick="G.closeSheet()">Entendido</button>`);
+    return;
+  }
+  if(isIOS()){
+    if(!isSafariIOS()){
+      openSheet(`<h3>Instala Garaje desde Safari</h3><p class="lead">En iPhone y iPad, Chrome y otros navegadores deben abrir esta página en Safari.</p>
+        <div class="card" style="text-align:left"><div class="reg-row"><span class="set-ic" style="background:var(--sky-soft);color:var(--sky)">${ic('export')}</span><div><b>1. Toca Compartir</b><div class="tiny">En Safari, usa el botón de compartir.</div></div></div>
+        <div class="reg-row"><span class="set-ic" style="background:var(--lime-soft);color:var(--lime)">${ic('plus')}</span><div><b>2. Agregar a pantalla de inicio</b><div class="tiny">Confirma con “Agregar” para instalar Garaje.</div></div></div></div>
+        <button class="btn btn-primary btn-block" onclick="G.closeSheet()">Entendido</button>`);
+      return;
+    }
+    openSheet(`<h3>Instalar Garaje</h3><p class="lead">Añádelo a la pantalla de inicio desde Safari.</p>
+      <div class="card" style="text-align:left"><div class="reg-row"><span class="set-ic" style="background:var(--sky-soft);color:var(--sky)">${ic('export')}</span><div><b>1. Toca Compartir</b><div class="tiny">Usa el botón de compartir de Safari.</div></div></div>
+      <div class="reg-row"><span class="set-ic" style="background:var(--lime-soft);color:var(--lime)">${ic('plus')}</span><div><b>2. Agregar a pantalla de inicio</b><div class="tiny">Confirma con “Agregar” para instalar Garaje.</div></div></div></div>
+      <button class="btn btn-primary btn-block" onclick="G.closeSheet()">Entendido</button>`);
+    return;
+  }
+  if(window._deferredInstall){
+    const promptEvent=window._deferredInstall;
+    promptEvent.prompt();
+    promptEvent.userChoice.then(choice=>{
+      if(choice.outcome==='accepted') toast('Garaje se está instalando.');
+      window._deferredInstall=null;
+      bindInstallAction();
+    });
+    return;
+  }
+  openSheet(`<h3>Instalar Garaje</h3><p class="lead">Usa el menú de tu navegador para añadir Garaje como aplicación.</p>
+    <div class="card"><p class="tiny" style="margin:0">Busca una opción como <b>Instalar aplicación</b>, <b>Agregar a pantalla de inicio</b> o <b>Instalar Garaje</b>.</p></div>
+    <button class="btn btn-primary btn-block" onclick="G.closeSheet()">Entendido</button>`);
+}
+function bindInstallNudge(){
+  const nudge=document.getElementById('installNudge');
+  const button=document.getElementById('installNudgeBtn');
+  const close=document.getElementById('installNudgeClose');
+  if(!nudge||!button||!close||isStandalone()||installDismissed()) return;
+  button.onclick=showInstallGuide;
+  close.onclick=dismissInstallNudge;
+  window.setTimeout(()=>{
+    if(!isStandalone()&&!installDismissed()) nudge.hidden=false;
+  },2800);
+}
 function bindInstallAction(){
   const group=document.getElementById('installAppGroup');
   const button=document.getElementById('installAppBtn');
   const hint=document.getElementById('installAppHint');
   if(!group||!button||!hint||isStandalone()) return;
   group.style.display='';
-  if(isIOS()){
-    if(!isSafariIOS()){
-      hint.textContent='En iPhone debes abrir Garaje en Safari';
-      button.onclick=()=>openSheet(`<h3>Abre Garaje en Safari</h3><p class="lead">Chrome para iPhone no puede instalar aplicaciones web.</p>
-        <div class="card" style="text-align:left"><div class="reg-row"><span class="set-ic" style="background:var(--sky-soft);color:var(--sky)">${ic('globe')}</span><div><b>1. Abre Safari</b><div class="tiny">Copia esta dirección y ábrela en Safari:</div><div class="tiny" style="word-break:break-all;margin-top:5px">checho420.github.io/garaje/</div></div></div>
-        <div class="reg-row"><span class="set-ic" style="background:var(--lime-soft);color:var(--lime)">${ic('export')}</span><div><b>2. Toca Compartir</b><div class="tiny">Luego selecciona “Agregar a pantalla de inicio”.</div></div></div></div>
-        <button class="btn btn-primary btn-block" onclick="G.closeSheet()">Entendido</button>`);
-      return;
-    }
-    hint.textContent='Toca Compartir y luego “Agregar a pantalla de inicio”';
-    button.onclick=()=>openSheet(`<h3>Instalar Garaje</h3><p class="lead">En Safari:</p>
-      <div class="card" style="text-align:left"><div class="reg-row"><span class="set-ic" style="background:var(--sky-soft);color:var(--sky)">${ic('export')}</span><div><b>1. Toca Compartir</b><div class="tiny">Usa el botón de compartir del navegador.</div></div></div>
-      <div class="reg-row"><span class="set-ic" style="background:var(--lime-soft);color:var(--lime)">${ic('plus')}</span><div><b>2. Agregar a pantalla de inicio</b><div class="tiny">Confirma con “Agregar” para instalar Garaje.</div></div></div></div>
-      <button class="btn btn-primary btn-block" onclick="G.closeSheet()">Entendido</button>`);
-    return;
-  }
-  if(window._deferredInstall){
-    hint.textContent='Acceso rápido y uso sin conexión';
-    button.onclick=async()=>{
-      const promptEvent=window._deferredInstall;
-      if(!promptEvent) return;
-      promptEvent.prompt();
-      const choice=await promptEvent.userChoice;
-      if(choice.outcome==='accepted') toast('Garaje se está instalando.');
-      window._deferredInstall=null;
-      group.style.display='none';
-    };
-    return;
-  }
-  hint.textContent='Abre el menú del navegador y elige “Instalar aplicación”';
-  button.onclick=()=>toast('Busca “Instalar aplicación” en el menú del navegador.');
+  if(isIOS()) hint.textContent=isSafariIOS()?'Toca Compartir y luego “Agregar a pantalla de inicio”':'Abre Garaje en Safari para instalarlo';
+  else if(window._deferredInstall) hint.textContent='Acceso rápido y uso sin conexión';
+  else hint.textContent='Abre el menú del navegador y elige “Instalar aplicación”';
+  button.onclick=showInstallGuide;
 }
 function applyTheme(){ document.documentElement.setAttribute('data-theme', state.settings.theme==='dark'?'dark':'light');
   document.querySelector('meta[name=theme-color]').setAttribute('content', state.settings.theme==='dark'?'#0F1620':'#1B90F5'); }
@@ -1401,6 +1434,7 @@ document.getElementById('fileInput').onchange=(ev)=>{
 load();
 applyTheme();
 goTab('s-inicio');
+bindInstallNudge();
 
 /* ══════════════════════ REGISTRO DEL SERVICE WORKER (PWA) ══════════════════════ */
 if('serviceWorker' in navigator){
@@ -1412,9 +1446,11 @@ window.addEventListener('beforeinstallprompt', (e)=>{
   e.preventDefault();
   window._deferredInstall=e;
   bindInstallAction();
+  bindInstallNudge();
 });
 window.addEventListener('appinstalled',()=>{
   window._deferredInstall=null;
+  dismissInstallNudge();
   const group=document.getElementById('installAppGroup');
   if(group) group.style.display='none';
   toast('Garaje quedó instalado en tu dispositivo.');

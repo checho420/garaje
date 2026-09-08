@@ -660,13 +660,103 @@ function normalizePlate(value){ return String(value||'').replace(/\s+/g,'').toUp
 
 /* ---------- persistencia ---------- */
 function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){ toast('No se pudo guardar.','err'); } }
+function isRecord(value){ return value!==null&&typeof value==='object'&&!Array.isArray(value); }
+function finiteOr(value,fallback=0){
+  const n=Number(value);
+  return Number.isFinite(n)?n:fallback;
+}
+function safeRecordId(value,prefix,used){
+  const id=String(value||'').trim();
+  if(/^[A-Za-z0-9_-]{1,80}$/.test(id)&&!used.has(id)){ used.add(id); return id; }
+  let generated;
+  do generated=`${prefix}_${uid()}`; while(used.has(generated));
+  used.add(generated);
+  return generated;
+}
+function normalizeEvent(raw,issues,usedIds){
+  if(!isRecord(raw)){ issues.push('registro de evento inválido'); return null; }
+  const type=String(raw.type||'').trim();
+  if(!Object.prototype.hasOwnProperty.call(CATS,type)){ issues.push('evento con tipo desconocido'); return null; }
+  const date=validDate(raw.date)?raw.date:'';
+  if(!date){ issues.push(`evento ${type} sin fecha válida`); return null; }
+  const event={
+    id:safeRecordId(raw.id,'evt',usedIds),
+    type,date,
+    title:String(raw.title||raw.docType||'').trim(),
+    cost:Math.max(0,finiteOr(raw.cost)),
+    notes:String(raw.notes||'').trim()
+  };
+  ['mileage','qty'].forEach(key=>{ if(raw[key]!=null&&raw[key]!=='') event[key]=Math.max(0,finiteOr(raw[key])); });
+  ['provider','station','fuelUnit','docType'].forEach(key=>{ if(raw[key]!=null) event[key]=String(raw[key]).trim(); });
+  if(raw.expiry!=null&&raw.expiry!==''){
+    if(validDate(raw.expiry)) event.expiry=raw.expiry;
+    else issues.push(`evento ${type} con vencimiento inválido`);
+  }
+  if(type==='document'){
+    event.docType=event.docType||event.title;
+    event.title=event.docType;
+    if(!event.docType){ issues.push('documento sin tipo'); return null; }
+  }
+  return event;
+}
+function normalizeVehicle(raw,issues,usedVehicleIds){
+  if(!isRecord(raw)){ issues.push('vehículo inválido'); return null; }
+  const name=String(raw.name||'').trim();
+  if(!name){ issues.push('vehículo sin nombre'); return null; }
+  const usedEventIds=new Set();
+  const events=Array.isArray(raw.events)?raw.events.map(e=>normalizeEvent(e,issues,usedEventIds)).filter(Boolean):[];
+  if(!Array.isArray(raw.events)&&raw.events!=null) issues.push(`eventos inválidos en ${name}`);
+  const usedFixedIds=new Set();
+  const fixed=Array.isArray(raw.fixed)?raw.fixed.filter(isRecord).map(item=>({
+    id:safeRecordId(item.id,'fix',usedFixedIds),
+    concept:String(item.concept||'Otro').trim()||'Otro',
+    amount:Math.max(0,finiteOr(item.amount)),
+    since:validDate(item.since)?item.since:''
+  })):[];
+  if(raw.fixed!=null&&!Array.isArray(raw.fixed)) issues.push(`gastos fijos inválidos en ${name}`);
+  return {
+    id:safeRecordId(raw.id,'veh',usedVehicleIds),
+    name,brand:String(raw.brand||'').trim(),model:String(raw.model||'').trim(),
+    year:raw.year==null||raw.year===''?null:Math.max(0,Math.round(finiteOr(raw.year))),
+    plate:normalizePlate(raw.plate),mileage:Math.max(0,finiteOr(raw.mileage)),
+    purchaseDate:validDate(raw.purchaseDate)?raw.purchaseDate:'',
+    purchaseCost:Math.max(0,finiteOr(raw.purchaseCost)),
+    photo:String(raw.photo||'').trim(),notes:String(raw.notes||'').trim(),
+    status:Object.prototype.hasOwnProperty.call(OWN_STATUS,raw.status)?raw.status:'owned',
+    salePrice:Math.max(0,finiteOr(raw.salePrice)),icon:String(raw.icon||'sedan'),
+    events,fixed
+  };
+}
+function normalizeData(raw){
+  const issues=[];
+  if(!isRecord(raw)||!Array.isArray(raw.vehicles)) return {data:null,issues:['el archivo debe contener una lista de vehículos']};
+  const usedVehicleIds=new Set();
+  const vehicles=raw.vehicles.map(v=>normalizeVehicle(v,issues,usedVehicleIds)).filter(Boolean);
+  const defaults=defaultSettings(), incoming=isRecord(raw.settings)?raw.settings:{};
+  const settings={
+    theme:incoming.theme==='dark'?'dark':'light',
+    currency:Object.prototype.hasOwnProperty.call(CURRENCIES,incoming.currency)?incoming.currency:defaults.currency,
+    language:incoming.language==='en'?'en':'es',
+    units:{
+      distance:incoming.units&&incoming.units.distance==='mi'?'mi':'km',
+      fuel:incoming.units&&FUEL_UNITS.includes(incoming.units.fuel)?incoming.units.fuel:defaults.units.fuel
+    },
+    reminders:{
+      days:incoming.reminders&&incoming.reminders.days!==false,
+      km:incoming.reminders&&incoming.reminders.km!==false
+    }
+  };
+  return {data:{vehicles,settings},issues};
+}
 function load(){
   const raw=localStorage.getItem(STORAGE_KEY);
   if(raw){
     try{
       const parsed=JSON.parse(raw);
-      state=parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{vehicles:[],settings:defaultSettings()};
-    }catch(e){ state={vehicles:[],settings:defaultSettings()}; save(); }
+      const normalized=normalizeData(parsed);
+      state=normalized.data||{vehicles:[],settings:defaultSettings()};
+      if(normalized.issues.length) setTimeout(()=>toast('Se corrigieron algunos datos guardados.','err'),0);
+    }catch(e){ state={vehicles:[],settings:defaultSettings()}; setTimeout(()=>toast('No se pudieron leer los datos guardados. Se conservaron sin modificar.','err'),0); }
   } else { state={vehicles:[],settings:defaultSettings()}; save(); }
   if(Array.isArray(state.vehicles) && state.vehicles.length>0 && state.vehicles.every(v=>v&&['v_mazda','v_renault'].includes(v.id))){
     state.vehicles=[];
@@ -674,10 +764,6 @@ function load(){
   }
   if(!state.vehicles) state.vehicles=[];
   if(!state.settings) state.settings=defaultSettings();
-  state.settings=Object.assign(defaultSettings(),state.settings);
-  state.settings.units=Object.assign(defaultSettings().units,state.settings.units||{});
-  state.settings.reminders=Object.assign(defaultSettings().reminders,state.settings.reminders||{});
-  state.vehicles.forEach(v=>{ if(!v.events) v.events=[]; if(!v.fixed) v.fixed=[]; if(!v.status) v.status='owned'; if(v.salePrice==null) v.salePrice=0; if(!v.icon) v.icon='sedan'; v.plate=normalizePlate(v.plate); });
 }
 
 /* ---------- utilidades ---------- */
@@ -1886,17 +1972,21 @@ document.getElementById('fileInput').onchange=(ev)=>{
   const reader=new FileReader();
   reader.onload=()=>{
     let imported; try{ imported=JSON.parse(reader.result); }catch(e){ toast('El archivo no es un JSON válido.','err'); return; }
-    if(!imported||!Array.isArray(imported.vehicles)){ toast('El archivo no tiene el formato esperado.','err'); return; }
-    askConfirm('Importar datos', `Se encontraron ${imported.vehicles.length} vehículo(s). Se fusionarán con tus datos actuales.`, ()=>{
-      imported.vehicles.forEach(iv=>{
-        iv.plate=normalizePlate(iv.plate);
+    const normalized=normalizeData(imported);
+    if(!normalized.data){ toast('El archivo no tiene el formato esperado.','err'); return; }
+    const warning=normalized.issues.length?` Se omitieron o corrigieron ${normalized.issues.length} registro(s) inválido(s).`:'';
+    askConfirm('Importar datos', `Se encontraron ${normalized.data.vehicles.length} vehículo(s). Se fusionarán con tus datos actuales.${warning}`, ()=>{
+      normalized.data.vehicles.forEach(iv=>{
         const ex=state.vehicles.find(v=>v.id===iv.id);
-        if(ex){ const evs=ex.events||[]; (iv.events||[]).forEach(ie=>{ if(!evs.find(e=>e.id===ie.id)) evs.push(ie); });
-          const fx=ex.fixed||[]; (iv.fixed||[]).forEach(ifx=>{ if(!fx.find(f=>f.id===ifx.id)) fx.push(ifx); });
-          Object.assign(ex,iv,{events:evs,fixed:fx}); }
-        else state.vehicles.push(iv);
+        if(ex){
+          const eventIds=new Set(ex.events.map(e=>e.id));
+          iv.events.forEach(ie=>{ if(!eventIds.has(ie.id)){ ex.events.push(ie); eventIds.add(ie.id); } });
+          const fixedIds=new Set(ex.fixed.map(f=>f.id));
+          iv.fixed.forEach(ifx=>{ if(!fixedIds.has(ifx.id)){ ex.fixed.push(ifx); fixedIds.add(ifx.id); } });
+          Object.assign(ex,iv,{events:ex.events,fixed:ex.fixed});
+        } else state.vehicles.push(iv);
       });
-      if(imported.settings) state.settings=Object.assign(state.settings,imported.settings);
+      state.settings=Object.assign(state.settings,normalized.data.settings);
       save(); closeSheet(); toast('Datos importados y fusionados.'); applyTheme(); goTab(currentTab);
     });
   };

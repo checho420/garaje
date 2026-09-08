@@ -584,7 +584,7 @@ function renderHome(){
       </div>
     </div>`;
   };
-  const heroHtml=`<section class="docs-alerts">${requiredDocs.map(documentAlert).join('')}</section>`;
+  const heroHtml=`<section class="home-alerts">${picoPlacaCard(v)}<section class="docs-alerts">${requiredDocs.map(documentAlert).join('')}</section></section>`;
   hero.innerHTML=heroHtml;
 
   // acciones rápidas
@@ -709,7 +709,6 @@ function panelGeneral(v){
   const docs=v.events.filter(e=>e.type==='document');
   const ok=docs.filter(e=>docStatus(e.expiry).cls==='ok').length, soon=docs.filter(e=>docStatus(e.expiry).cls==='soon').length, bad=docs.filter(e=>docStatus(e.expiry).cls==='bad').length;
   return `<section class="cat-panel on" data-panel="general">
-    ${picoPlacaCard(v)}
     <div class="mini-grid">
       ${mini('cash','var(--mango)','var(--mango-soft)','Costo total de propiedad',money(m.totalOwnership),'compra + gastos + fijos')}
       ${mini('chart','var(--sky)','var(--sky-soft)','Total invertido en gastos',money(t.all),`${v.events.length} registros`)}

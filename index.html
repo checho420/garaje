@@ -1509,6 +1509,10 @@ function isIOS(){
   return /iphone|ipad|ipod/i.test(window.navigator.userAgent) ||
     (window.navigator.platform==='MacIntel' && window.navigator.maxTouchPoints>1);
 }
+function isSafariIOS(){
+  return isIOS() && /safari/i.test(window.navigator.userAgent) &&
+    !/crios|fxios|edgios|opios/i.test(window.navigator.userAgent);
+}
 function bindInstallAction(){
   const group=document.getElementById('installAppGroup');
   const button=document.getElementById('installAppBtn');
@@ -1516,8 +1520,16 @@ function bindInstallAction(){
   if(!group||!button||!hint||isStandalone()) return;
   group.style.display='';
   if(isIOS()){
+    if(!isSafariIOS()){
+      hint.textContent='En iPhone debes abrir Garaje en Safari';
+      button.onclick=()=>openSheet(`<h3>Abre Garaje en Safari</h3><p class="lead">Chrome para iPhone no puede instalar aplicaciones web.</p>
+        <div class="card" style="text-align:left"><div class="reg-row"><span class="set-ic" style="background:var(--sky-soft);color:var(--sky)">${ic('globe')}</span><div><b>1. Abre Safari</b><div class="tiny">Copia esta dirección y ábrela en Safari:</div><div class="tiny" style="word-break:break-all;margin-top:5px">checho420.github.io/garaje/</div></div></div>
+        <div class="reg-row"><span class="set-ic" style="background:var(--lime-soft);color:var(--lime)">${ic('export')}</span><div><b>2. Toca Compartir</b><div class="tiny">Luego selecciona “Agregar a pantalla de inicio”.</div></div></div></div>
+        <button class="btn btn-primary btn-block" onclick="G.closeSheet()">Entendido</button>`);
+      return;
+    }
     hint.textContent='Toca Compartir y luego “Agregar a pantalla de inicio”';
-    button.onclick=()=>openSheet(`<h3>Instalar Garaje</h3><p class="lead">En tu iPhone o iPad:</p>
+    button.onclick=()=>openSheet(`<h3>Instalar Garaje</h3><p class="lead">En Safari:</p>
       <div class="card" style="text-align:left"><div class="reg-row"><span class="set-ic" style="background:var(--sky-soft);color:var(--sky)">${ic('export')}</span><div><b>1. Toca Compartir</b><div class="tiny">Usa el botón de compartir del navegador.</div></div></div>
       <div class="reg-row"><span class="set-ic" style="background:var(--lime-soft);color:var(--lime)">${ic('plus')}</span><div><b>2. Agregar a pantalla de inicio</b><div class="tiny">Confirma con “Agregar” para instalar Garaje.</div></div></div></div>
       <button class="btn btn-primary btn-block" onclick="G.closeSheet()">Entendido</button>`);

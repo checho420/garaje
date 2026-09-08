@@ -513,7 +513,7 @@ function picoPlacaCard(v){
   const isMoto=status.vehicleType==='moto', next=status.next?`Próxima restricción: ${['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][status.next.date.getDay()]} ${fmtDate(picoDateKey(status.next.date))} · placas ${status.next.digits.join(' y ')}`:'Sin próxima restricción';
   const plate=normalizePlate(v.plate)||'SIN PLACA';
   return `<div class="pico-card" style="--pico-color:${color}">
-    <div class="pico-head"><span class="pico-icon" style="background:${soft};color:${color}">${ic(isMoto?'road':'road')}</span><div><div class="card-h">Pico y placa · ${isMoto?'Moto':'Carro'}</div><div class="pico-city">${status.city} · ${isMoto?'primer':'último'} dígito ${status.digit||'—'}</div></div><span class="state-chip" style="margin-left:auto;background:${soft};color:${color}">${plate}</span></div>
+    <div class="pico-head"><span class="pico-icon" style="background:${soft};color:${color}">${ic(isMoto?'road':'road')}</span><div><div class="card-h">Pico y placa · ${isMoto?'Moto':'Carro'}</div><div class="pico-city">${status.city} · ${isMoto?'primer':'último'} dígito ${status.digit||'—'}</div></div><span class="pico-plate" aria-label="Placa ${plate}" style="background:${soft};color:${color};border-color:${color}">${plate}</span></div>
     <div class="pico-status" style="color:${color}">${status.cls==='bad'?'No circular ahora':(status.cls==='soon'?'Circular fuera del horario':'Puede circular hoy')}</div>
     <div class="pico-detail">${status.detail}</div>
     <div class="pico-next">${next}</div>

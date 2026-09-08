@@ -943,9 +943,9 @@ function drawHomeTrend(monthData){
   svg.innerHTML=out;
 }
 
-function requiredDocumentCards(v){
+function upcomingDocumentCards(v){
   const required=[{type:'SOAT',icon:'shield'},{type:'Tecnomecánica',icon:'tool'}];
-  return `<section class="card" style="margin-top:14px"><div class="card-h">Documentos obligatorios</div>
+  return `<section class="card" style="margin-top:14px"><div class="card-h">Documentos por vencer pronto</div>
     ${required.map(doc=>{
       const item=v.events.filter(e=>e.type==='document'&&((e.docType||e.title)===doc.type)).sort((a,b)=>(b.date||'').localeCompare(a.date||''))[0];
       const status=item&&item.expiry?docStatus(item.expiry):{label:item?'Sin vencimiento':'Sin registrar',cls:item?'soon':'missing',days:null};
@@ -1005,34 +1005,7 @@ function renderHome(){
   }
   const m=metricsOf(v);
 
-  // héroe: próximo documento a vencer o vencido (el más urgente)
-  let heroHtml='';
-  const urgentDoc = m.expiredDocs[0] || m.nextDoc;
-  if(urgentDoc){
-    const isExpired = m.expiredDocs[0]===urgentDoc;
-    const st=docStatus(urgentDoc.expiry);
-    const days=st.days;
-    const pct = days==null?0:Math.max(0,Math.min(1,1-Math.abs(days)/90));
-    const circumf=270, offset=circumf-(circumf*pct);
-    const color = isExpired?'var(--coral)':(days<=15?'var(--coral)':(days<=30?'var(--mango)':'var(--lime)'));
-    heroHtml=`<section class="countdown" style="--cd-color:${color}">
-      <div class="ring"><svg viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="43" fill="none" stroke="var(--edge)" stroke-width="9"/>
-        <circle cx="50" cy="50" r="43" fill="none" stroke="${color}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${circumf}" stroke-dashoffset="${offset}"/>
-      </svg><div style="text-align:center"><div class="num" style="color:${color}">${isExpired?'!':Math.abs(days)}</div><div class="unit">${isExpired?'VENCIDO':'DÍAS'}</div></div></div>
-      <div class="cd-body">
-        <span class="cd-kicker" style="color:${color};background:${isExpired||days<=15?'var(--coral-soft)':'var(--mango-soft)'}">${ic('warn')}${isExpired?'Vencido':'Vence pronto'}</span>
-        <h3>${escapeHtml(urgentDoc.docType||urgentDoc.title)}</h3>
-        <div class="meta">${isExpired?'Venció el '+fmtDate(urgentDoc.expiry):'Hasta el '+fmtDate(urgentDoc.expiry)}</div>
-        <div class="act"><button class="btn btn-primary btn-sm" onclick="G.openForm('event','document',null,'${v.id}')">Renovar</button>
-          <button class="btn btn-quiet btn-sm" onclick="G.goDocsFor('${v.id}')">Ver todos</button></div>
-      </div></section>`;
-  } else {
-    heroHtml=`<section class="card" style="text-align:center;padding:26px 18px">
-      <div style="width:52px;height:52px;border-radius:16px;background:var(--lime-soft);color:var(--lime);display:grid;place-items:center;margin:0 auto 10px">${ic('check')}</div>
-      <h3 style="font-size:16px">Todo al día</h3><p class="tiny muted" style="margin:4px 0 0">No tienes documentos por vencer pronto.</p></section>`;
-  }
-  hero.innerHTML=heroHtml + requiredDocumentCards(v);
+  hero.innerHTML=upcomingDocumentCards(v);
 
   // acciones rápidas
   quick.innerHTML=`

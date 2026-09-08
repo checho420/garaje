@@ -165,6 +165,18 @@ h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.02em}
 .cd-body h3{font-size:19px;margin:9px 0 3px}
 .cd-body .meta{font-size:13.5px;color:var(--ink-2);font-weight:600}
 .cd-body .act{margin-top:11px;display:flex;gap:8px}
+.docs-alerts{background:var(--paper);border-radius:var(--r-lg);padding:14px;box-shadow:var(--shadow-lift);
+  display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden}
+.docs-alerts::after{content:"";position:absolute;inset:0;border-radius:var(--r-lg);
+  border:2px solid var(--coral);opacity:.28;pointer-events:none}
+.doc-alert{display:flex;gap:14px;align-items:center;background:var(--paper-2);
+  border:1px solid var(--edge);border-radius:18px;padding:14px;position:relative;z-index:1}
+.doc-alert .ring{width:82px;height:82px}
+.doc-alert .ring .num{font-size:25px}
+.doc-alert .cd-body h3{font-size:17px;margin:7px 0 3px}
+.doc-alert .cd-body .meta{font-size:12.5px}
+.doc-alert .cd-body .act{margin-top:9px}
+.doc-alert .btn-sm{padding:7px 12px;font-size:12.5px}
 
 /* ── Botones ── */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
@@ -982,44 +994,35 @@ function renderHome(){
   }
   const m=metricsOf(v);
 
-  // Muestra una sola alerta para el documento obligatorio más urgente.
+  // Muestra los dos documentos obligatorios con la misma jerarquía visual.
   const requiredDocs=['SOAT','Tecnomecánica'].map(type=>{
     const item=v.events.filter(e=>e.type==='document'&&(e.docType||e.title)===type)
       .sort((a,b)=>(a.expiry||'9999-12-31').localeCompare(b.expiry||'9999-12-31'))[0];
     return item||{id:`missing-${type}`,docType:type,missing:true};
   });
-  const urgentDoc=requiredDocs.slice().sort((a,b)=>{
-    const aRank=a.missing?2:(a.expiry&&docStatus(a.expiry).cls==='bad'?0:1);
-    const bRank=b.missing?2:(b.expiry&&docStatus(b.expiry).cls==='bad'?0:1);
-    return aRank-bRank || (a.expiry||'9999-12-31').localeCompare(b.expiry||'9999-12-31');
-  })[0];
-  const secondaryDocs=requiredDocs.filter(e=>e.id!==urgentDoc.id);
-  let heroHtml='';
-  if(urgentDoc){
-    const st=urgentDoc.missing?{label:'Sin registrar',cls:'missing',days:null}:docStatus(urgentDoc.expiry);
+  const documentAlert=doc=>{
+    const st=doc.missing?{label:'Sin registrar',cls:'missing',days:null}:docStatus(doc.expiry);
     const color=st.cls==='bad'?'var(--coral)':(st.cls==='soon'?'var(--mango)':'var(--lime)');
-    const isExpired=st.cls==='bad';
-    const days=st.days;
+    const soft=st.cls==='bad'?'var(--coral-soft)':(st.cls==='soon'?'var(--mango-soft)':(st.cls==='missing'?'var(--paper)':'var(--lime-soft)'));
+    const isExpired=st.cls==='bad', days=st.days;
     const pct=days==null?0:Math.max(0,Math.min(1,1-Math.abs(days)/90));
     const circumf=270, offset=circumf-(circumf*pct);
-    heroHtml=`<section class="countdown" style="--cd-color:${color}">
+    const label=doc.missing?'Sin registrar':(isExpired?'Vencido':'Vence pronto');
+    const detail=doc.missing?'Registra este documento para activar sus alertas':(isExpired?'Venció el ':'Hasta el ')+fmtDate(doc.expiry);
+    return `<div class="doc-alert" style="--cd-color:${color}">
       <div class="ring"><svg viewBox="0 0 100 100">
         <circle cx="50" cy="50" r="43" fill="none" stroke="var(--edge)" stroke-width="9"/>
         <circle cx="50" cy="50" r="43" fill="none" stroke="${color}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${circumf}" stroke-dashoffset="${offset}"/>
-      </svg><div style="text-align:center"><div class="num" style="color:${color}">${urgentDoc.missing?'—':(isExpired?'!':Math.abs(days))}</div><div class="unit">${urgentDoc.missing?'SIN REGISTRO':(isExpired?'VENCIDO':'DÍAS')}</div></div></div>
+      </svg><div style="text-align:center"><div class="num" style="color:${color}">${doc.missing?'—':(isExpired?'!':Math.abs(days))}</div><div class="unit">${doc.missing?'SIN REGISTRO':(isExpired?'VENCIDO':'DÍAS')}</div></div></div>
       <div class="cd-body">
-        <span class="cd-kicker" style="color:${color};background:${urgentDoc.missing?'var(--paper-2)':(isExpired||days<=15?'var(--coral-soft)':'var(--mango-soft)')}">${ic('warn')}${urgentDoc.missing?'Sin registrar':(isExpired?'Vencido':'Vence pronto')}</span>
-        <h3>${escapeHtml(urgentDoc.docType||urgentDoc.title)}</h3>
-        <div class="meta">${urgentDoc.missing?'Registra este documento para activar sus alertas':(isExpired?'Venció el '+fmtDate(urgentDoc.expiry):'Hasta el '+fmtDate(urgentDoc.expiry))}</div>
-        <div class="act"><button class="btn btn-primary btn-sm" onclick="G.openForm('event','document','${urgentDoc.missing?'':urgentDoc.id}','${v.id}')">${urgentDoc.missing?'Registrar':(isExpired?'Renovar':'Ver documento')}</button>
-          <button class="btn btn-quiet btn-sm" onclick="G.goDocsFor('${v.id}')">Ver todos</button></div>
-        ${secondaryDocs.map(doc=>{ const ds=doc.missing?{label:'Sin registrar',cls:'missing'}:docStatus(doc.expiry); const dc=ds.cls==='bad'?'var(--coral)':(ds.cls==='soon'?'var(--mango)':'var(--lime)'); const soft=ds.cls==='bad'?'var(--coral-soft)':(ds.cls==='soon'?'var(--mango-soft)':'var(--lime-soft)'); return `<button class="reg-row" style="width:100%;text-align:left;margin-top:10px;padding:9px 0;background:transparent" onclick="G.openForm('event','document','${doc.missing?'':doc.id}','${v.id}')"><span class="reg-ic" style="background:${soft};color:${dc}">${ic(doc.docType==='SOAT'?'shield':'tool')}</span><span class="reg-body"><span class="t">${escapeHtml(doc.docType||doc.title)}</span><span class="s">${doc.missing?'Toca para registrar':(ds.cls==='bad'?'Venció el ':'Vence el ')+fmtDate(doc.expiry)}</span></span><span class="state-chip" style="margin-top:0;background:${soft};color:${dc}">${ds.label}</span></button>`;}).join('')}
-      </div></section>`;
-  } else {
-    heroHtml=`<section class="card" style="text-align:center;padding:26px 18px">
-      <div style="width:52px;height:52px;border-radius:16px;background:var(--lime-soft);color:var(--lime);display:grid;place-items:center;margin:0 auto 10px">${ic('check')}</div>
-      <h3 style="font-size:16px">Documentos al día</h3><p class="tiny muted" style="margin:4px 0 0">SOAT y tecnomecánica no tienen alertas pendientes.</p></section>`;
-  }
+        <span class="cd-kicker" style="color:${color};background:${soft}">${ic(doc.docType==='SOAT'?'shield':'tool')}${label}</span>
+        <h3>${escapeHtml(doc.docType||doc.title)}</h3>
+        <div class="meta">${detail}</div>
+        <div class="act"><button class="btn btn-primary btn-sm" onclick="G.openForm('event','document','${doc.missing?'':doc.id}','${v.id}')">${doc.missing?'Registrar':(isExpired?'Renovar':'Ver documento')}</button></div>
+      </div>
+    </div>`;
+  };
+  const heroHtml=`<section class="docs-alerts">${requiredDocs.map(documentAlert).join('')}</section>`;
   hero.innerHTML=heroHtml;
 
   // acciones rápidas

@@ -11,7 +11,7 @@
    dentro del propio navegador, y no se tocan al actualizar el caché.
    ========================================================================= */
 
-const CACHE_NAME = 'garaje-v1';
+const CACHE_NAME = 'garaje-v2';
 const APP_SHELL = [
   './',
   './index.html',

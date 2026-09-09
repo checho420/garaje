@@ -944,6 +944,7 @@ function drawSummaryCharts(v){
   const t=totalsOf(v);
   const cats=['maintenance','fuel','recurring','repair','accessory','document'].map(k=>({k,label:CATS[k].label,v:t[k],c:catColor(k)}));
   const chartLabels={maintenance:'Mantenimiento',fuel:'Combustible',recurring:'Recurrentes',repair:'Reparaciones',accessory:'Accesorios',document:'Documentos'};
+  const radarLabels={maintenance:'Mant.',fuel:'Comb.',recurring:'Recur.',repair:'Repar.',accessory:'Acces.',document:'Doc.'};
   // dona
   const dEl=document.getElementById('donutChart'); if(dEl){
     const total=cats.reduce((s,d)=>s+d.v,0); const cx=60,cy=60,r=50,ir=30; let a=-Math.PI/2,paths='';
@@ -1012,7 +1013,7 @@ function drawSummaryCharts(v){
     cats.forEach((d,i)=>{ const a=ang(i),x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R;
       axes+=`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--edge)" stroke-width="1"/>`;
       const lx=cx+Math.cos(a)*(R+16), ly=cy+Math.sin(a)*(R+16);
-      labels+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="800" fill="${d.c}" font-family="Nunito">${chartLabels[d.k].slice(0,6)}</text>`;
+      labels+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="800" fill="${d.c}" font-family="Nunito">${radarLabels[d.k]}</text>`;
       const rr=R*(d.v/max), px=cx+Math.cos(a)*rr, py=cy+Math.sin(a)*rr; poly+=`${px.toFixed(1)},${py.toFixed(1)} `; });
     rEl.innerHTML=grid+axes+`<polygon points="${poly}" fill="${catColor('fuel')}22" stroke="var(--mango)" stroke-width="2"/>`+labels;
     document.getElementById('radarLegend').innerHTML=cats.map(d=>`<div class="li"><i style="background:${d.c}"></i><span class="nm">${chartLabels[d.k]}</span><span class="vl">${money(d.v)}</span></div>`).join('');

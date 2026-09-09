@@ -26,6 +26,7 @@ function dataFunctions() {
     const OWN_STATUS={owned:{},forsale:{},sold:{}};
     const CURRENCIES={COP:{}};
     const FUEL_UNITS=['Galón','Litro'];
+    const BACKUP_FORMAT='garaje-backup';
     let sequence=0;
     const uid=()=>String(++sequence);
     function validDate(value){ return typeof value==='string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(value); }
@@ -69,6 +70,44 @@ test('normaliza ajustes con valores seguros', () => {
   assert.equal(result.data.settings.language, 'es');
   assert.equal(result.data.settings.units.distance, 'mi');
   assert.equal(result.data.settings.units.fuel, 'Litro');
+});
+
+test('conserva respaldos versionados con muchos mantenimientos', () => {
+  const context = dataFunctions();
+  const result = vm.runInContext(`
+    (() => {
+      const events=Array.from({length:250},(_,i)=>({
+        id:'maintenance_'+i,type:'maintenance',date:'2026-01-01',title:'Servicio '+i,
+        cost:i*1000,mileage:10000+i,provider:'Taller',notes:'Detalle '+i
+      }));
+      const backup={format:'garaje-backup',version:2,exportedAt:'2026-09-08T00:00:00.000Z',
+        data:{vehicles:[{id:'veh_1',name:'Mi vehículo',events}],settings:{}}};
+      const normalized=normalizeData(backup);
+      return [normalized.data.vehicles[0].events.length,dataCounts(normalized.data).maintenance];
+    })()
+  `, context);
+
+  assert.deepEqual(Array.from(result), [250, 250]);
+});
+
+test('fusiona registros sin perder datos y separa colisiones de IDs', () => {
+  const context = dataFunctions();
+  const result = vm.runInContext(`
+    (() => {
+      const target={vehicles:[{id:'veh_1',name:'Mi vehículo',plate:'ABC123',brand:'',model:'',events:[
+        {id:'evt_1',type:'maintenance',date:'2026-01-01',title:'Cambio de aceite',cost:100}
+      ],fixed:[]}],settings:{}};
+      const incoming={vehicles:[{id:'veh_1',name:'Mi vehículo',plate:'ABC123',brand:'',model:'',events:[
+        {id:'evt_1',type:'maintenance',date:'2026-01-01',title:'Cambio de aceite',cost:100},
+        {id:'evt_2',type:'maintenance',date:'2026-02-01',title:'Frenos',cost:200},
+        {id:'evt_1',type:'maintenance',date:'2026-03-01',title:'Batería',cost:300}
+      ],fixed:[]}],settings:{}};
+      const report=mergeImportedData(target,incoming);
+      return [target.vehicles[0].events.length,report.events,report.duplicates,report.collisions];
+    })()
+  `, context);
+
+  assert.deepEqual(Array.from(result), [3, 2, 1, 1]);
 });
 
 function documentFunctions() {

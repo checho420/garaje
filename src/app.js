@@ -781,7 +781,8 @@ function eventRow(e,v){
     : `<div class="reg-amt">${money(e.cost)}</div>`;
   return `<div class="reg-row" onclick="G.editEvent('${v.id}','${e.id}','${e.type}')">
     <span class="reg-ic" style="background:${soft};color:${color}">${ic(cat.icon)}</span>
-    <div class="reg-body"><div class="t">${escapeHtml(e.docType||e.title)||'(sin título)'}</div>
+    <div class="reg-body"><div class="event-kicker" style="color:${color}">${cat.singular}</div>
+      <div class="t">${escapeHtml(e.docType||e.title)||'(sin título)'}</div>
       <div class="s">${fmtDate(e.date)}${meta.length?' · '+meta.join(' · '):''}${e.expiry?' · vence '+fmtDate(e.expiry):''}</div></div>
     ${right}</div>`;
 }
@@ -873,7 +874,8 @@ function drawSummaryCharts(v){
   const bEl=document.getElementById('barsChart'); if(bEl){
     const max=Math.max(...cats.map(d=>d.v),1), W=280,H=140,base=110,padL=10,bw=(W-padL*2)/cats.length; let out='';
     cats.forEach((d,i)=>{ const x=padL+i*bw+bw*0.22,w=bw*0.56,h=(d.v/max)*80,y=base-h;
-      out+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="${d.c}"/><text x="${x+w/2}" y="${base+16}" text-anchor="middle" font-size="9.5" font-weight="800" fill="var(--ink-2)" font-family="Nunito">${d.label.slice(0,5)}</text>`; });
+      const chartLabels={maintenance:'Mant.',fuel:'Comb.',recurring:'Recur.',repair:'Repar.',accessory:'Acces.',document:'Doc.'};
+      out+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="${d.c}"/><text x="${x+w/2}" y="${base+16}" text-anchor="middle" font-size="9.5" font-weight="800" fill="var(--ink-2)" font-family="Nunito">${chartLabels[d.k]}</text>`; });
     bEl.innerHTML=out;
   }
   // gasto por año
@@ -904,7 +906,8 @@ function drawSummaryCharts(v){
     cats.forEach((d,i)=>{ const a=ang(i),x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R;
       axes+=`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--edge)" stroke-width="1"/>`;
       const lx=cx+Math.cos(a)*(R+16), ly=cy+Math.sin(a)*(R+16);
-      labels+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="800" fill="${d.c}" font-family="Nunito">${d.label.slice(0,5)}</text>`;
+      const chartLabels={maintenance:'Mant.',fuel:'Comb.',recurring:'Recur.',repair:'Repar.',accessory:'Acces.',document:'Doc.'};
+      labels+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="800" fill="${d.c}" font-family="Nunito">${chartLabels[d.k]}</text>`;
       const rr=R*(d.v/max), px=cx+Math.cos(a)*rr, py=cy+Math.sin(a)*rr; poly+=`${px.toFixed(1)},${py.toFixed(1)} `; });
     rEl.innerHTML=grid+axes+`<polygon points="${poly}" fill="${catColor('fuel')}22" stroke="var(--mango)" stroke-width="2"/>`+labels;
   }
@@ -1164,10 +1167,11 @@ function formVehicle(id){
 }
 
 /* --- Formulario: evento (mantenimiento/combustible/recurrente/accesorio/documento/reparación) --- */
-function formEvent(type,vehId,eventId){
+function formEvent(type,vehId,eventId,draft={}){
   const v=state.vehicles.find(x=>x.id===vehId); if(!v) return;
-  const e=eventId? v.events.find(x=>x.id===eventId) : {};
+  const e=eventId? {...(v.events.find(x=>x.id===eventId)||{}),...draft}:draft;
   const editing=!!eventId; const cat=CATS[type]; const today=new Date().toISOString().slice(0,10);
+  const categoryOptions=Object.entries(CATS).map(([key,item])=>`<option value="${key}" ${key===type?'selected':''}>${item.label}</option>`).join('');
   let main='';
   if(type==='maintenance') main=fieldSelect('f-title','Tipo de mantenimiento',MAINT_TYPES,e.title);
   else if(type==='accessory') main=fieldText('f-title','Descripción del accesorio',e.title,'Ej. Sensores de reversa',true);
@@ -1195,10 +1199,12 @@ function formEvent(type,vehId,eventId){
   extra += `<div class="field"><label>Notas</label><textarea id="f-notes" placeholder="Detalles adicionales...">${escapeHtml(e.notes||'')}</textarea></div>`;
 
   const html=`<h3>${editing?'Editar ':'Agregar '}${cat.singular.toLowerCase()}</h3><p class="lead">${escapeHtml(v.name)}</p>
+    <div class="field"><label>Categoría</label><select id="f-category">${categoryOptions}</select></div>
     ${main}${extra}
     <button class="btn btn-primary btn-block" onclick="G.saveEvent('${type}','${vehId}','${eventId||''}')">Guardar</button>
     ${editing?`<button class="link-danger" onclick="G.confirmDeleteEvent('${vehId}','${eventId}')">Eliminar registro</button>`:''}`;
   openSheet(html);
+  document.getElementById('f-category').onchange=()=>G.changeEventCategory(document.getElementById('f-category').value,vehId,eventId);
   attachMoneyMask('f-cost'); attachMoneyMask('f-mileage'); attachMoneyMask('f-mileage2');
   if(type==='fuel'&&e.mileage) document.getElementById('f-mileage').value=fmtCOP(e.mileage);
   if(type==='document'){
@@ -1214,6 +1220,17 @@ function formEvent(type,vehId,eventId){
     dateInput?.addEventListener('change',syncExpiry);
     typeInput?.addEventListener('change',()=>{ if(!eventId||!expiryInput.value) syncExpiry(); });
     if(!eventId&&!expiryInput.value) syncExpiry();
+  }
+  function captureEventDraft(){
+    const value=id=>document.getElementById(id)?.value||'';
+    return {
+      title:value('f-title')||value('f-docType'),
+      docType:value('f-docType'),
+      date:value('f-date'),expiry:value('f-expiry'),cost:parseMoney(value('f-cost')),
+      mileage:fromDistDisplay(parseMoney(value('f-mileage')||value('f-mileage2')))||null,
+      provider:value('f-provider'),notes:value('f-notes'),qty:value('f-qty'),
+      fuelUnit:value('f-fuelUnit'),station:value('f-station')
+    };
   }
 }
 
@@ -1255,9 +1272,13 @@ function openAddMenu(){
     <span class="ic" style="background:${soft};color:${color}">${ic(icon)}</span><span class="tx"><span class="t">${t}</span><span class="s">${s}</span></span></button>`;
   openSheet(`<h3>¿Qué registras?</h3><p class="lead">${escapeHtml(v.name)}</p>
     ${opt('fuel','fuel',catColor('fuel'),catSoft('fuel'),'Tanqueo','Combustible y rendimiento')}
-    ${opt('maintenance','wrench',catColor('maintenance'),catSoft('maintenance'),'Servicio o reparación','Taller, piezas, mano de obra')}
-    ${opt('document','doc',catColor('document'),catSoft('document'),'Documento','SOAT, tecnomecánica, seguro')}
-    ${opt('recurring','cash',catColor('recurring'),catSoft('recurring'),'Otro gasto','Parqueadero, lavado, peajes')}`);
+    ${opt('maintenance','wrench',catColor('maintenance'),catSoft('maintenance'),'Mantenimiento','Servicios preventivos y revisiones')}
+    ${opt('repair','tool',catColor('repair'),catSoft('repair'),'Reparación','Daños, averías y mano de obra')}
+    ${opt('accessory','plug',catColor('accessory'),catSoft('accessory'),'Accesorio','Elementos instalados o añadidos')}
+    ${opt('document','doc',catColor('document'),catSoft('document'),'Documento','SOAT, tecnomecánica y seguros')}
+    ${opt('recurring','cash',catColor('recurring'),catSoft('recurring'),'Gasto recurrente','Pagos sueltos como parqueadero o lavado')}
+    <button class="opt" onclick="G.closeSheet();setTimeout(()=>G.openForm('fixed',null,null,'${v.id}'),260)">
+      <span class="ic" style="background:var(--grape-soft);color:var(--grape)">${ic('repeat')}</span><span class="tx"><span class="t">Gasto fijo mensual</span><span class="s">Un valor mensual proyectado</span></span></button>`);
 }
 document.getElementById('fabBtn').onclick=openAddMenu;
 
@@ -1295,6 +1316,7 @@ const G={
   closeDetail(){ closeVehDetail(); },
   goDocsFor(id){ selectedId=id; goTab('s-docs'); },
   editEvent(vehId,eventId,type){ formEvent(type,vehId,eventId); },
+  changeEventCategory(type,vehId,eventId){ formEvent(type,vehId,eventId,captureEventDraft()); },
   editFixed(vehId,fixedId){ formFixed(vehId,fixedId); },
   openCurrencySheet(){ openCurrencySheet(); },
   pickCurrency(code){ state.settings.currency=code; save(); closeSheet(); renderSettingsScreen(); toast('Moneda actualizada.'); },

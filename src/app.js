@@ -1474,6 +1474,8 @@ const G={
   },
   saveEvent(type,vehId,eventId){
     const v=state.vehicles.find(x=>x.id===vehId); if(!v) return;
+    const selectedType=document.getElementById('f-category')?.value;
+    if(selectedType&&Object.prototype.hasOwnProperty.call(CATS,selectedType)) type=selectedType;
     let title = type==='document'?document.getElementById('f-docType').value : (type==='fuel'?'Tanqueo':document.getElementById('f-title').value.trim());
     const date=document.getElementById('f-date').value;
     if((type==='accessory'||type==='repair')&&!title){ toast('Escribe una descripción.','err'); return; }

@@ -849,6 +849,7 @@ function eventRow(e,v){
   if(e.provider) meta.push(escapeHtml(e.provider));
   if(e.station) meta.push(escapeHtml(e.station));
   if(e.type==='fuel'&&e.qty) meta.push(`${e.qty} ${(e.fuelUnit||'gal').toLowerCase()}`);
+  const description=e.notes?`<div class="event-description">${escapeHtml(e.notes)}</div>`:'';
   let right = e.type==='document'
     ? `<span class="state-chip" style="background:${docStatus(e.expiry).cls==='bad'?'var(--coral-soft)':(docStatus(e.expiry).cls==='soon'?'var(--mango-soft)':'var(--lime-soft)')};color:${docStatus(e.expiry).cls==='bad'?'var(--coral)':(docStatus(e.expiry).cls==='soon'?'var(--mango)':'var(--lime)')}">${docStatus(e.expiry).label}</span>`
     : `<div class="reg-amt">${money(e.cost)}</div>`;
@@ -856,7 +857,8 @@ function eventRow(e,v){
     <span class="reg-ic" style="background:${soft};color:${color}">${ic(cat.icon)}</span>
     <div class="reg-body"><div class="event-kicker" style="color:${color}">${cat.singular}</div>
       <div class="t">${escapeHtml(e.docType||e.title)||'(sin título)'}</div>
-      <div class="s">${fmtDate(e.date)}${meta.length?' · '+meta.join(' · '):''}${e.expiry?' · vence '+fmtDate(e.expiry):''}</div></div>
+      <div class="s">${fmtDate(e.date)}${meta.length?' · '+meta.join(' · '):''}${e.expiry?' · vence '+fmtDate(e.expiry):''}</div>
+      ${description}</div>
     ${right}</div>`;
 }
 function panelEvents(v,type){

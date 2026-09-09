@@ -916,20 +916,34 @@ function panelSummary(v){
     </div>
     <div class="card" style="text-align:center;margin-bottom:14px"><div class="mi-lb">Total invertido</div>
       <div style="font-size:26px;font-weight:900;color:var(--sky);margin-top:4px">${money(t.all)}</div></div>
-    <div class="card" style="margin-bottom:14px"><div class="card-h">Distribución por categoría</div>
+    <div class="card chart-card" style="margin-bottom:14px"><div class="card-h">Distribución por categoría</div>
+      <p class="chart-help">Muestra qué parte del dinero total corresponde a cada categoría.</p>
       <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center">
         <svg viewBox="0 0 120 120" style="width:120px;height:120px" id="donutChart"></svg>
         <div class="legend2" id="donutLegend"></div></div></div>
-    <div class="card" style="margin-bottom:14px"><div class="card-h">Gasto por categoría</div><svg viewBox="0 0 280 140" style="width:100%;height:auto" id="barsChart"></svg></div>
-    <div class="card" style="margin-bottom:14px"><div class="card-h">Gasto por año</div><svg viewBox="0 0 280 130" style="width:100%;height:auto" id="yearChart"></svg></div>
-    <div class="card" style="margin-bottom:14px"><div class="card-h">Perfil de gasto</div><div style="display:flex;justify-content:center"><svg viewBox="0 0 220 200" style="width:200px;height:auto" id="radarChart"></svg></div></div>
-    <div class="card"><div class="card-h">Gasto acumulado</div><svg viewBox="0 0 280 130" style="width:100%;height:auto" id="lineChart"></svg></div>
+    <div class="card chart-card" style="margin-bottom:14px"><div class="card-h">Gasto por categoría</div>
+      <p class="chart-help">La barra más alta representa la categoría donde más dinero has invertido.</p>
+      <svg viewBox="0 0 280 140" style="width:100%;height:auto" id="barsChart"></svg><div class="legend2 chart-legend" id="barsLegend"></div></div>
+    <div class="card chart-card" style="margin-bottom:14px"><div class="card-h">Gasto por año</div>
+      <p class="chart-help">Compara cuánto gastaste cada año. Los segmentos usan los mismos colores de las categorías.</p>
+      <svg viewBox="0 0 280 130" style="width:100%;height:auto" id="yearChart"></svg><div class="legend2 chart-legend" id="yearLegend"></div></div>
+    <div class="card chart-card" style="margin-bottom:14px"><div class="card-h">Gasto de los últimos 6 meses</div>
+      <p class="chart-help">Permite identificar si tus gastos recientes están subiendo o bajando.</p>
+      <svg viewBox="0 0 280 140" style="width:100%;height:auto" id="monthlyChart"></svg></div>
+    <div class="card chart-card" style="margin-bottom:14px"><div class="card-h">Perfil de gasto</div>
+      <p class="chart-help">Cada eje corresponde a una categoría. Cuanto más lejos del centro, mayor es el gasto relativo.</p>
+      <div style="display:flex;justify-content:center"><svg viewBox="0 0 220 200" style="width:200px;height:auto" id="radarChart"></svg></div>
+      <div class="legend2 chart-legend" id="radarLegend"></div></div>
+    <div class="card chart-card"><div class="card-h">Gasto acumulado</div>
+      <p class="chart-help">Suma progresiva de todos los gastos registrados a lo largo del tiempo.</p>
+      <svg viewBox="0 0 280 130" style="width:100%;height:auto" id="lineChart"></svg></div>
   </section>`;
 }
 const MES_CORTO=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 function drawSummaryCharts(v){
   const t=totalsOf(v);
   const cats=['maintenance','fuel','recurring','repair','accessory','document'].map(k=>({k,label:CATS[k].label,v:t[k],c:catColor(k)}));
+  const chartLabels={maintenance:'Mantenimiento',fuel:'Combustible',recurring:'Recurrentes',repair:'Reparaciones',accessory:'Accesorios',document:'Documentos'};
   // dona
   const dEl=document.getElementById('donutChart'); if(dEl){
     const total=cats.reduce((s,d)=>s+d.v,0); const cx=60,cy=60,r=50,ir=30; let a=-Math.PI/2,paths='';
@@ -943,15 +957,15 @@ function drawSummaryCharts(v){
     }
     document.getElementById('donutLegend').innerHTML = total===0
       ? `<span class="tiny muted">Sin gastos aún.</span>`
-      : cats.filter(d=>d.v>0).map(d=>`<div class="li"><i style="background:${d.c}"></i><span class="nm">${d.label}</span><span class="vl">${money(d.v)}</span></div>`).join('');
+      : cats.filter(d=>d.v>0).map(d=>`<div class="li"><i style="background:${d.c}"></i><span class="nm">${chartLabels[d.k]} <small>${((d.v/total)*100).toFixed(1)}%</small></span><span class="vl">${money(d.v)}</span></div>`).join('');
   }
   // barras
   const bEl=document.getElementById('barsChart'); if(bEl){
     const max=Math.max(...cats.map(d=>d.v),1), W=280,H=140,base=110,padL=10,bw=(W-padL*2)/cats.length; let out='';
     cats.forEach((d,i)=>{ const x=padL+i*bw+bw*0.22,w=bw*0.56,h=(d.v/max)*80,y=base-h;
-      const chartLabels={maintenance:'Mant.',fuel:'Comb.',recurring:'Recur.',repair:'Repar.',accessory:'Acces.',document:'Doc.'};
-      out+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="${d.c}"/><text x="${x+w/2}" y="${base+16}" text-anchor="middle" font-size="9.5" font-weight="800" fill="var(--ink-2)" font-family="Nunito">${chartLabels[d.k]}</text>`; });
+      out+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="${d.c}"/><text x="${x+w/2}" y="${Math.max(y-5,10)}" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--ink)" font-family="Nunito">${moneyShort(d.v)}</text><text x="${x+w/2}" y="${base+16}" text-anchor="middle" font-size="9.5" font-weight="800" fill="var(--ink-2)" font-family="Nunito">${chartLabels[d.k].slice(0,6)}</text>`; });
     bEl.innerHTML=out;
+    document.getElementById('barsLegend').innerHTML=cats.map(d=>`<div class="li"><i style="background:${d.c}"></i><span class="nm">${chartLabels[d.k]}</span><span class="vl">${money(d.v)}</span></div>`).join('');
   }
   // gasto por año
   const yEl=document.getElementById('yearChart'); if(yEl){
@@ -979,6 +993,15 @@ function drawSummaryCharts(v){
       });
       yEl.innerHTML=out;
     }
+    document.getElementById('yearLegend').innerHTML=cats.map(d=>`<div class="li"><i style="background:${d.c}"></i><span class="nm">${chartLabels[d.k]}</span></div>`).join('');
+  }
+  const monthlyEl=document.getElementById('monthlyChart');
+  if(monthlyEl){
+    const monthly=monthlyTotals(v,6), max=Math.max(...monthly.map(m=>m.total),1), W=280,base=110,padL=10,bw=(W-padL*2)/monthly.length;
+    monthlyEl.innerHTML=monthly.map((m,i)=>{
+      const x=padL+i*bw+bw*.2,w=bw*.6,h=(m.total/max)*78,y=base-h;
+      return `<rect x="${x}" y="${y}" width="${w}" height="${Math.max(h,2)}" rx="6" fill="${i===monthly.length-1?'var(--sky)':'var(--sky-soft)'}"/><text x="${x+w/2}" y="${Math.max(y-5,10)}" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--ink)" font-family="Nunito">${moneyShort(m.total)}</text><text x="${x+w/2}" y="${base+16}" text-anchor="middle" font-size="9.5" font-weight="800" fill="var(--ink-2)" font-family="Nunito">${m.label}</text>`;
+    }).join('');
   }
   // radar
   const rEl=document.getElementById('radarChart'); if(rEl){
@@ -989,10 +1012,10 @@ function drawSummaryCharts(v){
     cats.forEach((d,i)=>{ const a=ang(i),x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R;
       axes+=`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--edge)" stroke-width="1"/>`;
       const lx=cx+Math.cos(a)*(R+16), ly=cy+Math.sin(a)*(R+16);
-      const chartLabels={maintenance:'Mant.',fuel:'Comb.',recurring:'Recur.',repair:'Repar.',accessory:'Acces.',document:'Doc.'};
-      labels+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="800" fill="${d.c}" font-family="Nunito">${chartLabels[d.k]}</text>`;
+      labels+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="800" fill="${d.c}" font-family="Nunito">${chartLabels[d.k].slice(0,6)}</text>`;
       const rr=R*(d.v/max), px=cx+Math.cos(a)*rr, py=cy+Math.sin(a)*rr; poly+=`${px.toFixed(1)},${py.toFixed(1)} `; });
     rEl.innerHTML=grid+axes+`<polygon points="${poly}" fill="${catColor('fuel')}22" stroke="var(--mango)" stroke-width="2"/>`+labels;
+    document.getElementById('radarLegend').innerHTML=cats.map(d=>`<div class="li"><i style="background:${d.c}"></i><span class="nm">${chartLabels[d.k]}</span><span class="vl">${money(d.v)}</span></div>`).join('');
   }
   // línea acumulada
   const lEl=document.getElementById('lineChart'); if(lEl){

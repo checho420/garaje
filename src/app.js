@@ -956,19 +956,27 @@ function drawSummaryCharts(v){
   // gasto por año
   const yEl=document.getElementById('yearChart'); if(yEl){
     const byYear={};
-    v.events.forEach(e=>{ if(!validDate(e.date)) return; const y=e.date.slice(0,4); byYear[y]=byYear[y]||{maintenance:0,repair:0,other:0};
-      if(e.type==='maintenance') byYear[y].maintenance+=Number(e.cost)||0; else if(e.type==='repair') byYear[y].repair+=Number(e.cost)||0; else byYear[y].other+=Number(e.cost)||0; });
+    const yearCats=['maintenance','fuel','recurring','repair','accessory','document'];
+    v.events.forEach(e=>{
+      if(!validDate(e.date)||!yearCats.includes(e.type)) return;
+      const y=e.date.slice(0,4);
+      byYear[y]=byYear[y]||Object.fromEntries(yearCats.map(k=>[k,0]));
+      byYear[y][e.type]+=Number(e.cost)||0;
+    });
     const years=Object.keys(byYear).sort();
     if(!years.length) yEl.innerHTML=`<text x="140" y="65" text-anchor="middle" font-size="11" fill="var(--ink-3)" font-family="Nunito">Sin datos suficientes</text>`;
     else{
-      const max=Math.max(...years.map(y=>byYear[y].maintenance+byYear[y].repair+byYear[y].other),1);
+      const max=Math.max(...years.map(y=>yearCats.reduce((sum,k)=>sum+byYear[y][k],0)),1);
       const W=280,H=130,base=100,padL=10,bw=(W-padL*2)/years.length; let out='';
       years.forEach((y,i)=>{ const x=padL+i*bw+bw*0.24,w=bw*0.52; const yr=byYear[y];
-        const hM=(yr.maintenance/max)*70,hR=(yr.repair/max)*70,hO=(yr.other/max)*70;
-        out+=`<rect x="${x}" y="${base-hM-hR-hO}" width="${w}" height="${hM}" rx="3" fill="${catColor('maintenance')}"/>
-          <rect x="${x}" y="${base-hR-hO}" width="${w}" height="${hR}" rx="3" fill="${catColor('repair')}"/>
-          <rect x="${x}" y="${base-hO}" width="${w}" height="${hO}" rx="3" fill="${catColor('fuel')}"/>
-          <text x="${x+w/2}" y="${base+16}" text-anchor="middle" font-size="9.5" font-weight="800" fill="var(--ink-2)" font-family="Nunito">${y}</text>`; });
+        let cursor=base;
+        yearCats.forEach(k=>{
+          const h=(yr[k]/max)*70;
+          if(h>0) out+=`<rect x="${x}" y="${cursor-h}" width="${w}" height="${h}" rx="3" fill="${catColor(k)}"/>`;
+          cursor-=h;
+        });
+        out+=`<text x="${x+w/2}" y="${base+16}" text-anchor="middle" font-size="9.5" font-weight="800" fill="var(--ink-2)" font-family="Nunito">${y}</text>`;
+      });
       yEl.innerHTML=out;
     }
   }

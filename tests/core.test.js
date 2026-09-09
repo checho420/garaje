@@ -128,6 +128,33 @@ function documentFunctions() {
   );
 }
 
+function calculationFunctions() {
+  return loadFunctions(
+    'function totalsOf(v)',
+    'function fixedMonthly',
+    ``
+  );
+}
+
+test('recalcula los totales cuando un registro cambia de categoría', () => {
+  const context = calculationFunctions();
+  const result = vm.runInContext(`
+    (() => {
+      const v={events:[
+        {type:'maintenance',cost:2000000},
+        {type:'accessory',cost:500000},
+        {type:'repair',cost:300000}
+      ]};
+      const before=totalsOf(v);
+      v.events[0].type='accessory';
+      const after=totalsOf(v);
+      return [before.maintenance,before.accessory,before.all,after.maintenance,after.accessory,after.all];
+    })()
+  `, context);
+
+  assert.deepEqual(Array.from(result), [2000000, 500000, 2800000, 0, 2500000, 2800000]);
+});
+
 test('clasifica documentos vencidos, próximos y vigentes', () => {
   const context = documentFunctions();
   const result = vm.runInContext(`
